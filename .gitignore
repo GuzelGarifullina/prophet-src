@@ -1,0 +1,11 @@
+*.o
+learner
+prophet
+playground
+pdiffer
+cmake-build-debug/
+.~/
+.idea/
+*.lo
+*.Plo
+CMakeLists.txt
