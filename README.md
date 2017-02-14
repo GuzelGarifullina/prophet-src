@@ -1,8 +1,21 @@
 # Prophet test
 
+- [Build](#build)
 - [Changes](#changes)
 - [Dive into code](#dive-into-code)
 
+## Build
+
+Собрать prophet можно так:
+
+    docker pull stasbel/prophet
+    docker run -it -u="ubuntu" -w="/home/ubuntu/" stasbel/prophet /bin/bash -l
+    git clone https://github.com/StasBel/prophet-src
+    cd prophet-src
+    ./build
+    
+При этом вывод с ошибками перенаправится в ваш терминал. Это даже можно добавить в виде билда в ide.
+    
 ## Changes
 
 ### Description
