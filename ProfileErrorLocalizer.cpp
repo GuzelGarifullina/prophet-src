@@ -25,17 +25,18 @@
 #include <queue>
 #include <fstream>
 #include <assert.h>
-
 #include <dirent.h>
 
 using namespace clang;
 
 #define CLANG_PROFILE_WRAP "pclang.py"
 
+/* Localizer const's. */
 #define SIGMA 1000000
 #define LOC_LIMIT 4980
 #define LOC2_LIMIT 20
 
+/* Extern from Main.cpp, parse of -cpp flag. */
 extern llvm::cl::opt<bool> ForCPP;
 
 void ProfileErrorLocalizer::clearProfileResult() {
@@ -44,17 +45,21 @@ void ProfileErrorLocalizer::clearProfileResult() {
     assert(res == 0);
 }
 
+/**
+ * Parse profile results into a map.
+ * @return map assign a profile info to every source possition
+ */
 std::map<SourcePositionTy, ProfileInfoTy> ProfileErrorLocalizer::parseProfileResult() {
     if (LI == NULL)
         LI = new LocationIndex(INDEX_FILE);
 
     std::map<SourcePositionTy, ProfileInfoTy> M;
     M.clear();
-    DIR* dp = opendir("/tmp");
+    DIR *dp = opendir("/tmp");
     struct dirent *dirp;
     while (((dirp = readdir(dp)))) {
         std::string nstr = dirp->d_name;
-        if ((nstr.substr(0,5) != "__run") || (nstr.substr(nstr.size() - 4, 4) != ".log"))
+        if ((nstr.substr(0, 5) != "__run") || (nstr.substr(nstr.size() - 4, 4) != ".log"))
             continue;
 
         std::ifstream fin(("/tmp/" + nstr).c_str(), std::ifstream::in);
@@ -88,15 +93,14 @@ std::map<SourcePositionTy, ProfileInfoTy> ProfileErrorLocalizer::parseProfileRes
                 sin >> cnt >> cnt2;
             }
             std::map<SourcePositionTy, ProfileInfoTy>::iterator
-                find_it = M.find(tmploc);
+                    find_it = M.find(tmploc);
             if (find_it == M.end()) {
                 ProfileInfoTy tmp;
                 tmp.execution_cnt = cnt;
                 tmp.beforeend_cnt = cnt2;
                 tmp.pid = pid;
                 M.insert(std::make_pair(tmploc, tmp));
-            }
-            else {
+            } else {
                 find_it->second.execution_cnt += cnt;
                 if (find_it->second.beforeend_cnt < cnt2) {
                     find_it->second.beforeend_cnt = cnt2;
@@ -118,20 +122,27 @@ void clearTmpDirectory() {
 
 /**
  * Run error localization on bugged files, skip build if skip_build, using BenchProgram P
- * @param P
- * @param bugged_files
- * @param skip_build
+ * @param P bench prog obj
+ * @param bugged_files set of bugged files with error
+ * @param skip_build true if we should skip building the src
  */
 ProfileErrorLocalizer::ProfileErrorLocalizer(BenchProgram &P,
-        const std::set<std::string> &bugged_files, bool skip_build):
-    P(P), negative_cases(P.getNegativeCaseSet()), positive_cases(P.getPositiveCaseSet()) {
+                                             const std::set<std::string> &bugged_files,
+                                             bool skip_build) :
+        P(P), negative_cases(P.getNegativeCaseSet()), positive_cases(P.getPositiveCaseSet()) {
+    /* We will assign LI later. */
     LI = NULL;
-    if (skip_build) {
+
+    /* Dealing with building the profile close of src. */
+    if (skip_build) { /* If we value of skip_build true: */
+        /* We already have "profile" clone of "src", so just add it into map. */
         P.addExistingSrcClone("profile", true);
-    }
-    else {
+    } else { /* Else just build it. */
+        /* Making a clone of src. */
         P.clearSrcClone("profile");
         P.createSrcClone("profile");
+
+        /* Making map of env vars. */
         BenchProgram::EnvMapTy envMap;
         envMap.clear();
         if (ForCPP.getValue())
@@ -139,20 +150,20 @@ ProfileErrorLocalizer::ProfileErrorLocalizer(BenchProgram &P,
         else
             envMap["COMPILE_CMD"] = CLANG_CMD;
         envMap["INDEX_FILE"] = INDEX_FILE;
+
+        /* Clearing ./tmp/ files. */
         clearTmpDirectory();
+
+        /* Building a profile with wrapper. */
         P.buildSubDir("profile", CLANG_PROFILE_WRAP, envMap);
     }
 
+    /* Typedef for profile location map. */
     typedef std::map<SourcePositionTy, ProfileInfoTy> ProfileLocationMapTy;
+
+    /* Negative marks data structure. */
     ProfileLocationMapTy negative_mark;
     negative_mark.clear();
-/*    ProfileLocationMapTy negative_cnt;
-    negative_cnt.clear();*/
-    std::map<SourcePositionTy, long long> positive_mark;
-    //ProfileLocationMapTy positive_mark;
-    positive_mark.clear();
-/*    ProfileLocationMapTy positive_cnt;
-    positive_cnt.clear();*/
 
     // We test with an unmodified environment
     BenchProgram::EnvMapTy testEnv;
@@ -161,26 +172,29 @@ ProfileErrorLocalizer::ProfileErrorLocalizer(BenchProgram &P,
     unsigned long min_id = 1000000;
     unsigned long max_id = 0;
     for (TestCaseSetTy::const_iterator it = negative_cases.begin(); it != negative_cases.end(); ++it) {
-        llvm::errs() << "Neg Processing: "<< *it << "\n";
+        llvm::errs() << "Neg Processing: " << *it << "\n";
         ProfileLocationMapTy res;
         clearProfileResult();
         bool tmp = P.test("profile", *it, testEnv, true);
         res = parseProfileResult();
 
+        /* Renew*/
         if (*it < min_id) min_id = *it;
         if (*it > max_id) max_id = *it;
-        assert( !tmp || 1);
 
+        /* Check that test is negative. */
+        assert(!tmp);
+
+        /* ... */
         for (ProfileLocationMapTy::iterator iit = res.begin(); iit != res.end(); ++iit) {
             //llvm::errs() << iit->first.expFilename << " "<< iit->first.expLine << "\n";
             if (negative_mark.count(iit->first) != 0) {
-                negative_mark[iit->first].execution_cnt ++;
+                negative_mark[iit->first].execution_cnt++;
                 if (negative_mark[iit->first].beforeend_cnt < iit->second.beforeend_cnt) {
                     negative_mark[iit->first].beforeend_cnt = iit->second.beforeend_cnt;
                     negative_mark[iit->first].pid = iit->second.pid;
                 }
-            }
-            else {
+            } else {
                 negative_mark[iit->first].execution_cnt = 1;
                 negative_mark[iit->first].beforeend_cnt = iit->second.beforeend_cnt;
                 negative_mark[iit->first].pid = iit->second.pid;
@@ -195,6 +209,10 @@ ProfileErrorLocalizer::ProfileErrorLocalizer(BenchProgram &P,
     TestCaseSetTy::const_iterator begin_pos = positive_cases.lower_bound(min_id);
     TestCaseSetTy::const_iterator end_pos = positive_cases.upper_bound(max_id);
 
+    /* Positive mark data structure. */
+    std::map<SourcePositionTy, long long> positive_mark;
+    positive_mark.clear();
+
     size_t cnt = 0;
     for (TestCaseSetTy::const_iterator it = begin_pos; it != end_pos; ++it) {
         llvm::errs() << "Processing: " << cnt << " : " << *it << "\n";
@@ -202,7 +220,7 @@ ProfileErrorLocalizer::ProfileErrorLocalizer(BenchProgram &P,
         clearProfileResult();
         bool tmp = P.test("profile", *it, testEnv, true);
         res = parseProfileResult();
-        cnt ++;
+        cnt++;
         if (!tmp) {
             fprintf(stderr, "Profile version failed on this, maybe because of timeout due to overhead!\n");
             continue;
@@ -214,23 +232,24 @@ ProfileErrorLocalizer::ProfileErrorLocalizer(BenchProgram &P,
 
     // for every position in negative exc trace we push ... Q for all, Q2 for only from bugged files
     typedef std::priority_queue<std::pair<std::pair<long long, long long>, std::pair<SourcePositionTy, std::string> > >
-        PriorQueueTy;
+            PriorQueueTy;
     PriorQueueTy Q, Q2;
     for (ProfileLocationMapTy::iterator it = negative_mark.begin(); it != negative_mark.end(); ++it) {
         //llvm::errs() << it->first.expFilename << " " << it->first.expLine <<"\n";
         if (isSystemHeader(it->first.expFilename)) {
             continue;
         }
-        Q.push(std::make_pair( std::make_pair(-(it->second.execution_cnt * SIGMA - positive_mark[it->first]),
-            (it->second.beforeend_cnt)), std::make_pair(it->first, it->second.pid) ));
+        Q.push(std::make_pair(std::make_pair(-(it->second.execution_cnt * SIGMA - positive_mark[it->first]),
+                                             (it->second.beforeend_cnt)), std::make_pair(it->first, it->second.pid)));
         while (Q.size() > LOC_LIMIT)
             Q.pop();
 
         // FIXME: this is really hacky
         if (bugged_files.size() != 0)
             if (bugged_files.count(it->first.expFilename) == 1) {
-                Q2.push(std::make_pair( std::make_pair(-(it->second.execution_cnt * SIGMA - positive_mark[it->first]),
-                    (it->second.beforeend_cnt)), std::make_pair(it->first, it->second.pid) ));
+                Q2.push(std::make_pair(std::make_pair(-(it->second.execution_cnt * SIGMA - positive_mark[it->first]),
+                                                      (it->second.beforeend_cnt)),
+                                       std::make_pair(it->first, it->second.pid)));
                 while (Q2.size() > LOC2_LIMIT)
                     Q2.pop();
             }
@@ -242,7 +261,7 @@ ProfileErrorLocalizer::ProfileErrorLocalizer(BenchProgram &P,
     candidateResults.clear();
     while (Q.size() > 0) {
         ResRecordTy tmp;
-        tmp.primeScore = - Q.top().first.first;
+        tmp.primeScore = -Q.top().first.first;
         tmp.secondScore = Q.top().first.second;
         tmp.loc = Q.top().second.first;
         tmp.pid = Q.top().second.second;
@@ -256,7 +275,7 @@ ProfileErrorLocalizer::ProfileErrorLocalizer(BenchProgram &P,
     // FIXME: this is really hacky
     while (Q2.size() > 0) {
         ResRecordTy tmp;
-        tmp.primeScore = - Q2.top().first.first;
+        tmp.primeScore = -Q2.top().first.first;
         tmp.secondScore = Q2.top().first.second;
         tmp.loc = Q2.top().second.first;
         tmp.pid = Q2.top().second.second;
@@ -271,9 +290,9 @@ ProfileErrorLocalizer::ProfileErrorLocalizer(BenchProgram &P,
     }
 
     // first all then <= 20 from bugged files
-    for (long i = (long)tmpv.size() - 1; i >=0; --i)
+    for (long i = (long) tmpv.size() - 1; i >= 0; --i)
         candidateResults.push_back(tmpv[i]);
-    for (long i = (long)tmpv2.size() - 1; i >= 0; --i)
+    for (long i = (long) tmpv2.size() - 1; i >= 0; --i)
         candidateResults.push_back(tmpv2[i]);
 
     printResult(P.getLocalizationResultFilename());
@@ -289,7 +308,7 @@ std::vector<SourcePositionTy> ProfileErrorLocalizer::getCandidateLocations() {
 
 void ProfileErrorLocalizer::printResult(const std::string &outfile) {
     std::ofstream fout(outfile.c_str(), std::ofstream::out);
-    assert( fout.is_open() );
+    assert(fout.is_open());
     for (size_t i = 0; i < candidateResults.size(); ++i) {
         ResRecordTy tmp = candidateResults[i];
         fout << tmp.loc << "\t\t" << tmp.primeScore << "\t\t" << tmp.secondScore << "\t\t" << tmp.pid << "\n";
@@ -298,8 +317,7 @@ void ProfileErrorLocalizer::printResult(const std::string &outfile) {
 }
 
 ProfileErrorLocalizer::ProfileErrorLocalizer(BenchProgram &P, const std::string &res_file)
-    : P(P), negative_cases(P.getNegativeCaseSet()), positive_cases(P.getPositiveCaseSet())
-{
+        : P(P), negative_cases(P.getNegativeCaseSet()), positive_cases(P.getPositiveCaseSet()) {
     LI = NULL;
     std::ifstream fin(res_file.c_str(), std::ifstream::in);
     assert(fin.is_open());
@@ -308,14 +326,14 @@ ProfileErrorLocalizer::ProfileErrorLocalizer(BenchProgram &P, const std::string 
     std::string line = "";
     size_t cnt = 0;
     while (std::getline(fin, line)) {
-        cnt ++;
+        cnt++;
         if (line == "")
             continue;
         std::istringstream sin(line);
         sin >> tmp.loc;
         sin >> tmp.primeScore >> tmp.secondScore >> tmp.pid;
         if (tmp.pid == "") {
-            fprintf(stderr, "Corrupted file at line %lu, assume pid 0\n", (unsigned long)cnt);
+            fprintf(stderr, "Corrupted file at line %lu, assume pid 0\n", (unsigned long) cnt);
             tmp.pid = "0";
         }
         candidateResults.push_back(tmp);
