@@ -9,7 +9,7 @@
 Собрать prophet можно так:
 
     docker pull stasbel/prophet
-    docker run -it -u="ubuntu" -w="/home/ubuntu/" stasbel/prophet /bin/bash -l
+    docker run -it -u="ubuntu" -w="/home/ubuntu/" stasbel/prophet /bin/bash -l &
     git clone https://github.com/StasBel/prophet-src
     cd prophet-src
     ./build

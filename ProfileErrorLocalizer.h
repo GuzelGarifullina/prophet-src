@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Prophet.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
+
 #include "Utils.h"
 #include "ErrorLocalizer.h"
 #include <string>
@@ -23,17 +24,30 @@
 #include <set>
 #include <map>
 
+/* Index file. */
 #define INDEX_FILE "/tmp/__index.loc"
 
+/* Def bench prog. */
 class BenchProgram;
 
-struct ProfileInfoTy {
+/* Info of profile about one round. */
+struct RoundInfoTy {
     long long execution_cnt;
     long long beforeend_cnt;
     std::string pid;
 };
 
+/* Info about bunch of rounds. */
+struct ProfileInfoTy {
+    std::vector<RoundInfoTy> rounds;
+};
+
+/* Typedef for profile location map. */
+typedef std::map<SourcePositionTy, ProfileInfoTy> ProfileLocationMapTy;
+
+/* Profile localizer class. */
 class ProfileErrorLocalizer : public ErrorLocalizer {
+    /* Typedef for sets. */
     typedef std::set<unsigned long> TestCaseSetTy;
 
     BenchProgram &P;
@@ -42,8 +56,7 @@ class ProfileErrorLocalizer : public ErrorLocalizer {
 
     class ResRecordTy {
     public:
-        long long primeScore;
-        long long secondScore;
+        double score;
         SourcePositionTy loc;
         std::string pid;
     };
@@ -52,19 +65,18 @@ class ProfileErrorLocalizer : public ErrorLocalizer {
 
     LocationIndex *LI;
 
+    ProfileLocationMapTy parseProfileResult();
+
     void clearProfileResult();
 
-    std::map<SourcePositionTy, ProfileInfoTy> parseProfileResult();
-
 public:
-    ProfileErrorLocalizer(BenchProgram &P, const std::string &res_file);
+    ProfileErrorLocalizer(BenchProgram &P, const std::set<std::string> &bugged_file, bool skip_build);
 
-    ProfileErrorLocalizer(BenchProgram &P, const std::set<std::string> &bugged_file,
-            bool skip_build);
+    ProfileErrorLocalizer(BenchProgram &P, const std::string &res_file);
 
     virtual std::vector<SourcePositionTy> getCandidateLocations();
 
     virtual void printResult(const std::string &outfile);
 
-    virtual ~ProfileErrorLocalizer() { }
+    virtual ~ProfileErrorLocalizer() {}
 };
