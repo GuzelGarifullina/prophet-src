@@ -34,6 +34,9 @@ using namespace clang;
 /* Extern from Main.cpp, parse of -cpp flag. */
 extern llvm::cl::opt<bool> ForCPP;
 
+/* Extern form Main.cpp, parse of localizer limitation. */
+extern llvm::cl::opt<unsigned int> LocProcessLimit;
+
 /**
  * Parse profile results into a map.
  * @return map assign a profile info to every source position
@@ -130,7 +133,7 @@ void ProfileErrorLocalizer::clearProfileResult() {
  * Calc average value.
  */
 template<typename T>
-double avg_longlong_to_double(const std::vector<T> &v, size_t k = 1) {
+double avg_double(const std::vector<T> &v, size_t k = 1) {
     if (v.size() == 0) {
         return 0;
     } else {
@@ -169,7 +172,7 @@ typedef struct {
 typedef std::map<SourcePositionTy, TmpInfoTy> TmpLocationMapTy;
 
 /**
- * Compute b part of score.
+ * Compute beforeend_cnt part of score.
  */
 double compute_b_score(const std::vector<double> &b, size_t k) {
     std::vector<double> v;
@@ -177,7 +180,7 @@ double compute_b_score(const std::vector<double> &b, size_t k) {
     for (size_t i = 0; i < b.size(); i++) {
         v.push_back(b[i] + 1);
     }
-    double res = avg_longlong_to_double(v, k);
+    double res = avg_double(v, k);
     if (res == 0) {
         return 0;
     } else {
@@ -186,11 +189,41 @@ double compute_b_score(const std::vector<double> &b, size_t k) {
 }
 
 /**
+ * Another version of computing score.
+ */
+double compute_b_score_exp(const std::vector<double> &b) {
+    std::vector<double> v;
+    v.clear();
+    for (size_t i = 0; i < b.size(); i++) {
+        v.push_back(b[i] * exp(-b[i]));
+    }
+    double avg = avg_double(v);
+    return exp(-avg);
+}
+
+/**
+ * Yet another version of computing score.
+ */
+double compute_b_score_exp2(const std::vector<double> &b) {
+    double t = 0, w = 0;
+    for (size_t i = 0; i < b.size(); i++) {
+        double weight = exp(-b[i]);
+        w += weight;
+        t += b[i] * exp(-b[i]);
+    }
+    if (w == 0) {
+        return 0;
+    } else {
+        return exp(-t / (8 * w));
+    }
+}
+
+/**
  * Computing score for loc's localizer ranging.
  */
 double compute_score(const TmpInfoTy &n, const TmpInfoTy &p, double negs, double poss) {
-    double NEG = (((double) n.execution_cnt) / negs) + compute_b_score(n.beforeend_cnts, 2);
-    double POS = (((double) p.execution_cnt) / poss) + compute_b_score(p.beforeend_cnts, 3);
+    double NEG = (((double) n.execution_cnt) / negs) + compute_b_score_exp2(n.beforeend_cnts);
+    double POS = (((double) p.execution_cnt) / poss) + compute_b_score_exp2(p.beforeend_cnts);
     return NEG - POS;
 }
 
@@ -233,6 +266,9 @@ ProfileErrorLocalizer::ProfileErrorLocalizer(BenchProgram &P,
         P.buildSubDir("profile", CLANG_PROFILE_WRAP, envMap);
     }
 
+    /* Limit. */
+    unsigned int limit = LocProcessLimit.getValue();
+
     /* We test with an unmodified environment. */
     BenchProgram::EnvMapTy testEnv;
     testEnv.clear();
@@ -242,7 +278,11 @@ ProfileErrorLocalizer::ProfileErrorLocalizer(BenchProgram &P,
     negative_mark.clear();
 
     /* Neg count. */
+    size_t cnt = 0;
     for (TestCaseSetTy::const_iterator it = negative_cases.begin(); it != negative_cases.end(); ++it) {
+        /* Break if reach limit. */
+        if (cnt >= limit) break;
+
         /* Info. */
         llvm::errs() << "Neg Processing: " << *it << "\n";
 
@@ -257,18 +297,20 @@ ProfileErrorLocalizer::ProfileErrorLocalizer(BenchProgram &P,
 
         /* Iterate though profile loc map. */
         for (ProfileLocationMapTy::iterator iit = res.begin(); iit != res.end(); ++iit) {
-            if (negative_mark.count(iit->first) != 0) { /* If already in map - inc and calc. */
+            if (negative_mark.count(iit->first) != 0) { /* If already in map - inc. */
                 negative_mark[iit->first].execution_cnt++;
-                negative_mark[iit->first].beforeend_cnts.push_back(
-                        avg_longlong_to_double(toVecOfBEC(iit->second.rounds)));
-                negative_mark[iit->first].pid = iit->second.rounds.at(0).pid;
             } else { /* Else - initial profile info. */
                 negative_mark[iit->first].execution_cnt = 1;
-                negative_mark[iit->first].beforeend_cnts.push_back(
-                        avg_longlong_to_double(toVecOfBEC(iit->second.rounds)));
-                negative_mark[iit->first].pid = iit->second.rounds.at(0).pid;
             }
+
+            /* Calc some values. */
+            negative_mark[iit->first].beforeend_cnts.push_back(
+                    avg_double(toVecOfBEC(iit->second.rounds)));
+            negative_mark[iit->first].pid = iit->second.rounds.at(0).pid;
         }
+
+        /* Inc. */
+        cnt++;
     }
 
     /* Positive mark data structure. */
@@ -276,7 +318,11 @@ ProfileErrorLocalizer::ProfileErrorLocalizer(BenchProgram &P,
     positive_mark.clear();
 
     /* Pos count. */
+    cnt = 0;
     for (TestCaseSetTy::const_iterator it = positive_cases.begin(); it != positive_cases.end(); ++it) {
+        /* Break if reach limit. */
+        if (cnt >= limit) break;
+
         /* Info. */
         llvm::errs() << "Pos processing: " << *it << "\n";
 
@@ -296,16 +342,19 @@ ProfileErrorLocalizer::ProfileErrorLocalizer(BenchProgram &P,
         for (ProfileLocationMapTy::iterator iit = res.begin(); iit != res.end(); ++iit) {
             if (positive_mark.count(iit->first) != 0) { /* If already in map - inc and calc. */
                 positive_mark[iit->first].execution_cnt++;
-                positive_mark[iit->first].beforeend_cnts.push_back(
-                        avg_longlong_to_double(toVecOfBEC(iit->second.rounds)));
-                positive_mark[iit->first].pid = iit->second.rounds.at(0).pid;
             } else { /* Else - initial profile info. */
                 positive_mark[iit->first].execution_cnt = 1;
-                positive_mark[iit->first].beforeend_cnts.push_back(
-                        avg_longlong_to_double(toVecOfBEC(iit->second.rounds)));
-                positive_mark[iit->first].pid = iit->second.rounds.at(0).pid;
+
             }
+
+            /* Calc some values. */
+            positive_mark[iit->first].beforeend_cnts.push_back(
+                    avg_double(toVecOfBEC(iit->second.rounds)));
+            positive_mark[iit->first].pid = iit->second.rounds.at(0).pid;
         }
+
+        /* Inc. */
+        cnt++;
     }
 
     /* Total amount of negative cases. */
@@ -353,6 +402,9 @@ ProfileErrorLocalizer::ProfileErrorLocalizer(BenchProgram &P,
         while (Q.size() > LOC_LIMIT) Q.pop();
     }
 
+    /* Printf. Need to be deleted. //TODO */
+    outlog_printf(1, "negs: %lf poss: %lf\n", negs, poss);
+
     /* Get result. */
     candidateResults.clear();
     while (Q.size() > 0) {
@@ -362,6 +414,17 @@ ProfileErrorLocalizer::ProfileErrorLocalizer(BenchProgram &P,
         tmp.pid = Q.top().second.second;
         candidateResults.push_back(tmp);
         Q.pop();
+
+        /* Printf. Need to be deleted. //TODO */
+        outlog_printf(1, "(-) %d | ", negative_mark[tmp.loc].execution_cnt);
+        for (size_t i = 0; i < negative_mark[tmp.loc].beforeend_cnts.size(); i++) {
+            outlog_printf(1, "%lf ", negative_mark[tmp.loc].beforeend_cnts[i]);
+        }
+        outlog_printf(1, " | (+) %d | ", positive_mark[tmp.loc].execution_cnt);
+        for (size_t i = 0; i < positive_mark[tmp.loc].beforeend_cnts.size() && i < 10; i++) {
+            outlog_printf(1, "%lf ", positive_mark[tmp.loc].beforeend_cnts[i]);
+        }
+        outlog_printf(1, "\n");
     }
 
     /* Print result. */

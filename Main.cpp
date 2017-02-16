@@ -87,6 +87,11 @@ llvm::cl::opt<double> GeoP("geop", llvm::cl::value_desc("flip probability"),
         llvm::cl::init(0.02), llvm::cl::desc("Flip Probability of Geometric Computations!"));
 llvm::cl::opt<double> Timeout("timeout", llvm::cl::init(0), llvm::cl::desc("Soft timeout limit in hours"));
 llvm::cl::opt<bool> ForCPP("cpp", llvm::cl::init(false));
+/* Flag for limit test processing for localizer. */
+llvm::cl::opt<unsigned int> LocProcessLimit("loc-process-limit",
+                                            llvm::cl::value_desc("limit"),
+                                            llvm::cl::init(1000),
+                                            llvm::cl::desc("Flag for limit test processing for localizer."));
 
 int main(int argc, char* argv[]) {
     llvm::cl::ParseCommandLineOptions(argc, argv);
