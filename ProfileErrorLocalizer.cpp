@@ -459,7 +459,7 @@ void ProfileErrorLocalizer::printResult(const std::string &outfile) {
 
 /**
  * Construct an error localizer from already existing file.
- * @param P bench proh obj
+ * @param P bench prog obj
  * @param res_file file with localization results
  */
 ProfileErrorLocalizer::ProfileErrorLocalizer(BenchProgram &P, const std::string &res_file)

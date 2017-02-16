@@ -68,6 +68,15 @@
 		average ratio of first fix: 0.0184925680546
 		average ratio of first schema: 0.000386309594703
 
+2. New localization alg (*cmd test 1 1*):
+
+        ==============STAT==============
+        test | candidates | schemas | test_eval | fixies
+        php-2adf58: 26682 18496 23228 1
+        ==============METRICS==============
+        average number of fixies over tests: 1.0
+        average rank of fixies over tests: 600.0
+
 ## Dive into code
 
 ### Observations
