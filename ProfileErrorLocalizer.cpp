@@ -279,12 +279,16 @@ ProfileErrorLocalizer::ProfileErrorLocalizer(BenchProgram &P,
 
     /* Neg count. */
     size_t cnt = 0;
+    size_t min_neg = 1000000;
     for (TestCaseSetTy::const_iterator it = negative_cases.begin(); it != negative_cases.end(); ++it) {
         /* Break if reach limit. */
         if (cnt >= limit) break;
 
         /* Info. */
         llvm::errs() << "Neg Processing: " << *it << "\n";
+
+        /* Update min. */
+        if (*it < min_neg) min_neg = *it;
 
         /* Process of profiling. */
         ProfileLocationMapTy res;
@@ -319,7 +323,8 @@ ProfileErrorLocalizer::ProfileErrorLocalizer(BenchProgram &P,
 
     /* Pos count. */
     cnt = 0;
-    for (TestCaseSetTy::const_iterator it = positive_cases.begin(); it != positive_cases.end(); ++it) {
+    for (TestCaseSetTy::const_iterator it = positive_cases.lower_bound(min_neg - (limit / 2));
+         it != positive_cases.end(); ++it) {
         /* Break if reach limit. */
         if (cnt >= limit) break;
 
@@ -402,9 +407,6 @@ ProfileErrorLocalizer::ProfileErrorLocalizer(BenchProgram &P,
         while (Q.size() > LOC_LIMIT) Q.pop();
     }
 
-    /* Printf. Need to be deleted. //TODO */
-    outlog_printf(1, "negs: %lf poss: %lf\n", negs, poss);
-
     /* Get result. */
     candidateResults.clear();
     while (Q.size() > 0) {
@@ -414,17 +416,6 @@ ProfileErrorLocalizer::ProfileErrorLocalizer(BenchProgram &P,
         tmp.pid = Q.top().second.second;
         candidateResults.push_back(tmp);
         Q.pop();
-
-        /* Printf. Need to be deleted. //TODO */
-        outlog_printf(1, "(-) %d | ", negative_mark[tmp.loc].execution_cnt);
-        for (size_t i = 0; i < negative_mark[tmp.loc].beforeend_cnts.size(); i++) {
-            outlog_printf(1, "%lf ", negative_mark[tmp.loc].beforeend_cnts[i]);
-        }
-        outlog_printf(1, " | (+) %d | ", positive_mark[tmp.loc].execution_cnt);
-        for (size_t i = 0; i < positive_mark[tmp.loc].beforeend_cnts.size() && i < 10; i++) {
-            outlog_printf(1, "%lf ", positive_mark[tmp.loc].beforeend_cnts[i]);
-        }
-        outlog_printf(1, "\n");
     }
 
     /* Print result. */
