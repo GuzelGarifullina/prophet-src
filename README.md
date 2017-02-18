@@ -77,6 +77,17 @@
         average number of fixies over tests: 1.0
         average rank of fixies over tests: 600.0
 
+3. Adding trashold 0:
+
+        ==============STAT==============
+        test | candidates | schemas | test_eval | fixies
+        php-2adf58: 9923 7926 30188 2
+        ==============METRICS==============
+        average number of fixies over tests: 2.0
+        average rank of fixies over tests: 262.0
+        average ratio of first fix: 0.00816285397561
+        average ratio of first schema: 0.000378501135503
+
 ## Dive into code
 
 ### Observations
