@@ -411,7 +411,7 @@ ProfileErrorLocalizer::ProfileErrorLocalizer(BenchProgram &P,
     }
 
     /* Printf. Need to be deleted. //TODO */
-    outlog_printf(1, "negs: %lf poss: %lf\n", negs, poss);
+    //outlog_printf(1, "negs: %lf poss: %lf\n", negs, poss);
 
     /* Get result. */
     candidateResults.clear();
@@ -429,7 +429,7 @@ ProfileErrorLocalizer::ProfileErrorLocalizer(BenchProgram &P,
         Q.pop();
 
         /* Printf. Need to be deleted. //TODO */
-        outlog_printf(1, "(-) %d | ", negative_mark[tmp.loc].execution_cnt);
+        /*outlog_printf(1, "(-) %d | ", negative_mark[tmp.loc].execution_cnt);
         for (size_t i = 0; i < negative_mark[tmp.loc].beforeend_cnts.size(); i++) {
             outlog_printf(1, "%lf ", negative_mark[tmp.loc].beforeend_cnts[i]);
         }
@@ -437,7 +437,7 @@ ProfileErrorLocalizer::ProfileErrorLocalizer(BenchProgram &P,
         for (size_t i = 0; i < positive_mark[tmp.loc].beforeend_cnts.size() && i < 10; i++) {
             outlog_printf(1, "%lf ", positive_mark[tmp.loc].beforeend_cnts[i]);
         }
-        outlog_printf(1, "\n");
+        outlog_printf(1, "\n"); */
     }
 
     /* Print result. */
