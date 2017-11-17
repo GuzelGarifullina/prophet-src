@@ -601,7 +601,7 @@ class RepairCandidateGeneratorImpl : public RecursiveASTVisitor<RepairCandidateG
         if (naive) return;
         ASTLocTy loc = getNowLocation(n);
         LocalAnalyzer *L = M.getLocalAnalyzer(loc);
-        // OK, we limit replacement to expr only statement to avoid stupid redundent
+        // OK, we limit replacement to expr only statement to avoid stupid redundant
         // changes to an compound statement/if statement
         if (llvm::isa<Expr>(n)) {
             AtomReplaceVisitor V(ctxt, L, n, ReplaceExt.getValue());
@@ -769,6 +769,64 @@ class RepairCandidateGeneratorImpl : public RecursiveASTVisitor<RepairCandidateG
         }
     }
 
+
+    void genSwapNeighStatement(Stmt* n, CompoundStmt *CS) {
+        if (in_yacc_func) return;
+        if (naive) return;
+        if (! CS) return;
+
+
+        bool is_first = true;
+        CompoundStmt::body_iterator it = CS->body_begin();
+        //that statement is the first one probably don't need
+        bool the_first = *it == n;
+        Stmt* prev = *it;
+
+        for (  ; it != CS->body_end(); ++it) {
+            if (*it == n) break;
+            if (!llvm::isa<DeclStmt>(*it))
+                is_first = false;
+            prev = *it;
+        }
+
+        ASTLocTy loc_n = getNowLocation(n);
+        if (! the_first){
+            ASTLocTy loc_prev = getNowLocation(prev);
+            RepairCandidate rc;
+            rc.actions.clear();
+            rc.actions.push_back(RepairAction(loc_prev, RepairAction::ReplaceMutationKind, n));
+            rc.actions.push_back(RepairAction(loc_n, RepairAction::ReplaceMutationKind, prev));
+            rc.score = PRIORITY_ALPHA * 2;
+            //need L.isValid to implement
+            /*if (learning)
+                rc.score = getLocScore(n);
+            else
+                rc.score = getPriority(n) + PRIORITY_ALPHA/2;*/
+            rc.kind = RepairCandidate::SwapNeighKind;
+            //something bad with it
+            rc.is_first = is_first;
+            q.push_back(rc);
+        }
+
+        if (it != CS->body_end()){
+            Stmt* next = *it;
+            ASTLocTy loc_next = getNowLocation(next);
+            RepairCandidate rc;
+            rc.actions.clear();
+            rc.actions.push_back(RepairAction(loc_n, RepairAction::ReplaceMutationKind, next));
+            rc.actions.push_back(RepairAction(loc_next, RepairAction::ReplaceMutationKind, n));
+            rc.score = PRIORITY_ALPHA * 2;
+            //need L.isValid to implement
+            /*if (learning)
+                rc.score = getLocScore(n);
+            else
+                rc.score = getPriority(n) + PRIORITY_ALPHA/2;*/
+            rc.kind = RepairCandidate::SwapNeighKind;
+            //something bad with it
+            rc.is_first = is_first;
+            q.push_back(rc);
+        }
+    }
     void genAddIfGuard(Stmt* n, bool is_first) {
         if (in_yacc_func)
             return;
@@ -1040,6 +1098,7 @@ public:
         if (stmt_stack.size() > 1 && stmt_stack[stmt_stack.size() - 1] == n) {
             CompoundStmt *CS = llvm::dyn_cast<CompoundStmt>(stmt_stack[stmt_stack.size() - 2]);
             bool is_first = false;
+            genSwapNeighStatement(n, CS);
             if (CS) {
                 is_first = true;
                 for (CompoundStmt::body_iterator it = CS->body_begin(); it != CS->body_end(); ++it) {
