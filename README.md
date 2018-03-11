@@ -9,11 +9,22 @@
 Собрать prophet можно так:
 
     docker pull stasbel/prophet
-    docker run -it -u="ubuntu" -w="/home/ubuntu/" stasbel/prophet /bin/bash -l &
+
+    create docker container and get it id, mine is 03889848681f
+    docker run -it -u="ubuntu" -w="/home/ubuntu/" stasbel/prophet /bin/bash -l
+    cd Workspace/prophet/src/
+
     git clone https://github.com/StasBel/prophet-src
     cd prophet-src
+
+
     ./build
-    
+
+    or manually
+
+    docker cp ./. 03889848681f:/home/ubuntu/Workspace/prophet/src/
+    docker exec -u="root" --privileged --tty 03889848681f chown -R ubuntu:ubuntu /home/ubuntu/Workspace/prophet/src
+    docker exec --tty 03889848681f python /home/ubuntu/Workspace/prophet/cmd build   
 При этом вывод с ошибками перенаправится в ваш терминал. Это даже можно добавить в виде билда в ide.
     
 ## Changes
@@ -93,7 +104,7 @@
 3. 
    Внутри prophet'a неправильно считается количество патчей (но есть скрипт, который делает это правильно, он и использовался для статьи). Дело в том, что
    некоторые partial instantained pathces могут иметь повторяющиеся abstract conditions, которые внутри представляются разные классами clang::Expr с одинаковыми
-   внутренностями (поэтому prophet и не видит разницы, помещая все в set). Это легко исправляется. Скорее всего, эта ошибка идет еше с SPR.
+   внутренностями (поэтому prophet и не видит разницы, помещая все в set). Это легко исправляется. Скорее всего, эта ошибка идет еще с SPR.
    
    Исправил.
 4. 
