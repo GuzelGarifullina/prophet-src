@@ -601,7 +601,7 @@ class RepairCandidateGeneratorImpl : public RecursiveASTVisitor<RepairCandidateG
         if (naive) return;
         ASTLocTy loc = getNowLocation(n);
         LocalAnalyzer *L = M.getLocalAnalyzer(loc);
-        // OK, we limit replacement to expr only statement to avoid stupid redundent
+        // OK, we limit replacement to expr only statement to avoid stupid redundant
         // changes to an compound statement/if statement
         if (llvm::isa<Expr>(n)) {
             AtomReplaceVisitor V(ctxt, L, n, ReplaceExt.getValue());
@@ -669,6 +669,28 @@ class RepairCandidateGeneratorImpl : public RecursiveASTVisitor<RepairCandidateG
         }
     }
 
+
+    void genFunctionMutation(Stmt* stmt, bool is_first) {
+        if (in_yacc_func) return;
+        if (naive) return;
+        ASTLocTy loc = getNowLocation(stmt);
+        RepairCandidate rc;
+        rc.actions.clear();
+        rc.actions.push_back(RepairAction(loc,
+                                          RepairAction::InsertMutationKind, stmt));
+
+        // FIXME:
+        if (learning)
+            rc.score = getLocScore(stmt);
+        else
+            rc.score = getPriority(stmt) + PRIORITY_ALPHA/2;
+
+
+        rc.kind = RepairCandidate::FunctionMutationKind;
+        rc.is_first = is_first;
+
+        q.push_back(rc);
+    }
     void genAddStatement(Stmt* n, bool is_first, bool is_func_block) {
         if (in_yacc_func) return;
         if (naive) return;
@@ -1034,36 +1056,38 @@ public:
         return ret;
     }
 
-    bool VisitStmt(Stmt *n) {
-        if (llvm::isa<CompoundStmt>(n))
+    bool VisitStmt(Stmt *stmt) {
+        if (llvm::isa<CompoundStmt>(stmt))
             return true;
-        if (stmt_stack.size() > 1 && stmt_stack[stmt_stack.size() - 1] == n) {
+        if (stmt_stack.size() > 1 && stmt_stack[stmt_stack.size() - 1] == stmt) {
             CompoundStmt *CS = llvm::dyn_cast<CompoundStmt>(stmt_stack[stmt_stack.size() - 2]);
             bool is_first = false;
             if (CS) {
                 is_first = true;
                 for (CompoundStmt::body_iterator it = CS->body_begin(); it != CS->body_end(); ++it) {
-                    if (*it == n) break;
+                    if (*it == stmt) break;
                     if (!llvm::isa<DeclStmt>(*it))
                         is_first = false;
                 }
             }
-            is_first = is_first && !llvm::isa<DeclStmt>(n);
+            is_first = is_first && !llvm::isa<DeclStmt>(stmt);
+            genFunctionMutation(stmt, is_first);
 
-            if (isTainted(n)) {
-                if (llvm::isa<DeclStmt>(n) && in_float)
-                    genDeclStmtChange(llvm::dyn_cast<DeclStmt>(n));
-                // This is to compute whether Stmt n is the first
+
+            /*if (isTainted(stmt)) {
+                if (llvm::isa<DeclStmt>(stmt) && in_float)
+                    genDeclStmtChange(llvm::dyn_cast<DeclStmt>(stmt));
+                // This is to compute whether Stmt stmt is the first
                 // non-decl statement in a CompoundStmt
-                genReplaceStmt(n, is_first);
-                if (!llvm::isa<DeclStmt>(n) && !llvm::isa<LabelStmt>(n))
-                    genAddIfGuard(n, is_first);
-                genAddMemset(n, is_first);
-                genAddStatement(n, is_first, stmt_stack.size() == 2);
-                genAddIfExit(n, is_first, stmt_stack.size() == 2);
+                genReplaceStmt(stmt, is_first);
+                if (!llvm::isa<DeclStmt>(stmt) && !llvm::isa<LabelStmt>(stmt))
+                    genAddIfGuard(stmt, is_first);
+                genAddMemset(stmt, is_first);
+                genAddStatement(stmt, is_first, stmt_stack.size() == 2);
+                genAddIfExit(stmt, is_first, stmt_stack.size() == 2);
             }
-            else if (llvm::isa<IfStmt>(n)) {
-                IfStmt *IFS = llvm::dyn_cast<IfStmt>(n);
+            else if (llvm::isa<IfStmt>(stmt)) {
+                IfStmt *IFS = llvm::dyn_cast<IfStmt>(stmt);
                 Stmt* thenBlock = IFS->getThen();
                 CompoundStmt *CS = llvm::dyn_cast<CompoundStmt>(thenBlock);
                 Stmt* firstS = thenBlock;
@@ -1072,13 +1096,13 @@ public:
                         firstS = *CS->body_begin();
                 if (isTainted(thenBlock) || (firstS != NULL && isTainted(firstS))) {
                     if (isTainted(thenBlock))
-                        loc_map1[n] = loc_map1[thenBlock];
+                        loc_map1[stmt] = loc_map1[thenBlock];
                     else
-                        loc_map1[n] = loc_map1[firstS];
-                    genAddStatement(n, is_first, stmt_stack.size() == 2);
+                        loc_map1[stmt] = loc_map1[firstS];
+                    genAddStatement(stmt, is_first, stmt_stack.size() == 2);
                 }
             }
-        }
+        }*/
         return true;
     }
 
