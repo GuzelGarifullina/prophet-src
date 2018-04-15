@@ -668,6 +668,19 @@ std::set<Expr*> LocalAnalyzer::getGlobalCandidateExprs() {
     return res;
 }
 
+std::set<clang::Stmt*> LocalAnalyzer::getGlobalCandidateFunctionFirstExpressions(Stmt* stmt) {
+    //std::set<Stmt*> stmts = G->getCandidateIfStmts();
+    std::set<Stmt*> res;
+    res.clear();
+    //for (std::set<Stmt*>::iterator it = stmts.begin(); it != stmts.end(); ++it)
+    res.insert(duplicateStmt(ctxt, stmt));
+    return res;
+}
+
+void LocalAnalyzer::dump() {
+    G->dump(true);
+}
+
 std::set<Stmt*> LocalAnalyzer::getGlobalCandidateIfStmts() {
     std::set<Stmt*> stmts = G->getCandidateIfStmts();
     std::set<Stmt*> res;

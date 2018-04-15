@@ -670,26 +670,45 @@ class RepairCandidateGeneratorImpl : public RecursiveASTVisitor<RepairCandidateG
     }
 
 
-    void genFunctionMutation(Stmt* stmt, bool is_first) {
+    void genFunctionMutation(Stmt* stmt, bool is_first,bool is_func_block) {
         if (in_yacc_func) return;
         if (naive) return;
         ASTLocTy loc = getNowLocation(stmt);
-        RepairCandidate rc;
-        rc.actions.clear();
-        rc.actions.push_back(RepairAction(loc,
-                                          RepairAction::InsertMutationKind, stmt));
+        LocalAnalyzer *L = M.getLocalAnalyzer(loc);
+        //L->dump();
+        std::set<Stmt*> stmts = L->getGlobalCandidateFunctionFirstExpressions(stmt);
+        std::map<std::string, RepairCandidate> tmp_map;
+        tmp_map.clear();
 
-        // FIXME:
-        if (learning)
-            rc.score = getLocScore(stmt);
-        else
-            rc.score = getPriority(stmt) + PRIORITY_ALPHA/2;
+        for (std::set<Stmt*>::iterator it2 = stmts.begin(); it2 != stmts.end(); ++it2) {
+            RepairCandidate rc;
+            rc.actions.clear();
+            rc.actions.push_back(RepairAction(loc,
+                                              RepairAction::InsertMutationKind, *it2));
+            if (learning) {
+                rc.score = getLocScore(stmt);
+            }
+            else {
+                rc.score = getPriority(stmt);
+                if (is_first) {
+                    rc.score += PRIORITY_ALPHA;
+                    if (is_func_block)
+                        rc.score += PRIORITY_ALPHA/2;
+                }
+            }
+            rc.kind = RepairCandidate::AddAndReplaceKind;
+            rc.is_first = is_first;
+            tmp_map[stmtToString(*ctxt, *it2)] = rc;
+        }
 
-
-        rc.kind = RepairCandidate::FunctionMutationKind;
-        rc.is_first = is_first;
-
-        q.push_back(rc);
+        // This tmp_map is used to eliminate identical candidate generated
+        for (std::map<std::string, RepairCandidate>::iterator it = tmp_map.begin();
+             it != tmp_map.end(); ++it) {
+            // see TraverseFuncDecl, some hacky way to fix loc score for is_first && is_func_block
+            if (is_first && is_func_block)
+                tmp_memo.push_back(q.size());
+            q.push_back(it->second);
+        }
     }
     void genAddStatement(Stmt* n, bool is_first, bool is_func_block) {
         if (in_yacc_func) return;
@@ -1049,10 +1068,14 @@ public:
             if (loc_map1[n] > loc_map1[ElseCS])
                 loc_map1[n] = loc_map1[ElseCS];
         }
-        if (isTainted(n) || isTainted(ThenCS))
-            genTightCondition(n);
-        if (isTainted(n) || isTainted(ElseCS))
-            genLooseCondition(n);
+        if (isTainted(n) || isTainted(ThenCS)){
+            //genTightCondition(n);
+
+        }
+        if (isTainted(n) || isTainted(ElseCS)){
+            //genLooseCondition(n);
+
+        }
         return ret;
     }
 
@@ -1071,20 +1094,19 @@ public:
                 }
             }
             is_first = is_first && !llvm::isa<DeclStmt>(stmt);
-            genFunctionMutation(stmt, is_first);
 
-
-            /*if (isTainted(stmt)) {
+            if (isTainted(stmt)) {
                 if (llvm::isa<DeclStmt>(stmt) && in_float)
-                    genDeclStmtChange(llvm::dyn_cast<DeclStmt>(stmt));
+                    //genDeclStmtChange(llvm::dyn_cast<DeclStmt>(stmt));
                 // This is to compute whether Stmt stmt is the first
                 // non-decl statement in a CompoundStmt
                 genReplaceStmt(stmt, is_first);
-                if (!llvm::isa<DeclStmt>(stmt) && !llvm::isa<LabelStmt>(stmt))
-                    genAddIfGuard(stmt, is_first);
-                genAddMemset(stmt, is_first);
-                genAddStatement(stmt, is_first, stmt_stack.size() == 2);
-                genAddIfExit(stmt, is_first, stmt_stack.size() == 2);
+                //if (!llvm::isa<DeclStmt>(stmt) && !llvm::isa<LabelStmt>(stmt))
+                    //genAddIfGuard(stmt, is_first);
+                //genAddMemset(stmt, is_first);
+                genFunctionMutation(stmt, is_first, stmt_stack.size() == 2);
+                //genAddStatement(stmt, is_first, stmt_stack.size() == 2);
+                //genAddIfExit(stmt, is_first, stmt_stack.size() == 2);
             }
             else if (llvm::isa<IfStmt>(stmt)) {
                 IfStmt *IFS = llvm::dyn_cast<IfStmt>(stmt);
@@ -1099,10 +1121,10 @@ public:
                         loc_map1[stmt] = loc_map1[thenBlock];
                     else
                         loc_map1[stmt] = loc_map1[firstS];
-                    genAddStatement(stmt, is_first, stmt_stack.size() == 2);
+                    //genAddStatement(stmt, is_first, stmt_stack.size() == 2);
                 }
             }
-        }*/
+        }
         return true;
     }
 

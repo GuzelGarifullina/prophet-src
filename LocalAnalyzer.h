@@ -128,7 +128,10 @@ public:
 
     std::set<clang::Expr*> getGlobalCandidateExprs();
 
+    std::set<clang::Stmt*> getGlobalCandidateFunctionFirstExpressions(clang::Stmt* stmt);
+
     std::set<clang::Stmt*> getGlobalCandidateIfStmts();
+    void dump();
 
     std::set<clang::Stmt*> getCandidateMacroExps();
 
