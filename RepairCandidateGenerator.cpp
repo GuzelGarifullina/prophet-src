@@ -374,7 +374,16 @@ IfStmt* duplicateIfStmt(ASTContext *ctxt, IfStmt *IS, Expr* new_cond) {
     return ret;
 }
 
-class CallVisitor : public RecursiveASTVisitor<CallVisitor> {
+    IfStmt* deleteStmt(ASTContext *ctxt, Stmt* stmt) {
+        Expr* placeholder = getNewIntegerLiteral(ctxt, 0);
+        IfStmt *new_IF = new(*ctxt) IfStmt(*ctxt, SourceLocation(), NULL, placeholder, stmt);
+        return new_IF;
+    }
+
+
+
+
+    class CallVisitor : public RecursiveASTVisitor<CallVisitor> {
     bool found;
 public:
     CallVisitor() : found(false) { }
@@ -676,7 +685,7 @@ class RepairCandidateGeneratorImpl : public RecursiveASTVisitor<RepairCandidateG
         ASTLocTy loc = getNowLocation(stmt);
         LocalAnalyzer *L = M.getLocalAnalyzer(loc);
         //L->dump();
-        std::set<Stmt*> stmts = L->getGlobalCandidateFunctionFirstExpressions(stmt);
+        /*std::set<Stmt*> stmts = L->getGlobalCandidateFunctionFirstExpressions(stmt);
         std::map<std::string, RepairCandidate> tmp_map;
         tmp_map.clear();
 
@@ -708,7 +717,21 @@ class RepairCandidateGeneratorImpl : public RecursiveASTVisitor<RepairCandidateG
             if (is_first && is_func_block)
                 tmp_memo.push_back(q.size());
             q.push_back(it->second);
-        }
+        }*/
+
+        IfStmt *new_IF = deleteStmt(ctxt, stmt);
+        RepairCandidate rc;
+        rc.actions.clear();
+        rc.actions.push_back(RepairAction(loc, RepairAction::ReplaceMutationKind, new_IF));
+
+        // FIXME: priority!
+        if (learning)
+            rc.score = getLocScore(stmt);
+        else
+            rc.score = getPriority(stmt) + PRIORITY_ALPHA;
+        rc.kind = RepairCandidate::GuardKind;
+        rc.is_first = is_first;
+        q.push_back(rc);
     }
     void genAddStatement(Stmt* n, bool is_first, bool is_func_block) {
         if (in_yacc_func) return;

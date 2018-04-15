@@ -669,12 +669,12 @@ std::set<Expr*> LocalAnalyzer::getGlobalCandidateExprs() {
 }
 
 std::set<clang::Stmt*> LocalAnalyzer::getGlobalCandidateFunctionFirstExpressions(Stmt* stmt) {
-    std::set<clang::FunctionDecl*>  funcs = G->getFuncDecls();
+    //std::set<clang::FunctionDecl*>  funcs = G->getFuncDecls();
 
     std::set<Stmt*> res;
-    res.clear();res.clear();
+    res.clear();
 
-    for (std::set<FunctionDecl*>::iterator func = funcs.begin(); func != funcs.end(); ++func){
+    /*for (std::set<FunctionDecl*>::iterator func = funcs.begin(); func != funcs.end(); ++func){
         //(*func)->getNameAsString()
         Stmt *funcBody = (*func)->getBody();
         if (!(funcBody)){
@@ -689,7 +689,8 @@ std::set<clang::Stmt*> LocalAnalyzer::getGlobalCandidateFunctionFirstExpressions
             continue;
         }
         res.insert(duplicateStmt(ctxt, firstStmt));
-    }
+    }*/
+    res.insert(duplicateStmt(ctxt, stmt));
     return res;
 }
 
