@@ -66,6 +66,7 @@ namespace clang {
 
 class SourceContextManager;
 
+
 struct ASTLocTy {
     std::string filename;
     std::string src_file;
@@ -91,6 +92,10 @@ struct ASTLocTy {
     std::string toString(SourceContextManager &M) const ;
 };
 
+struct  FunctionFirstLoc{
+    ASTLocTy loc;
+    clang::Stmt * stmt;
+};
 class StmtReplacerImpl;
 
 class StmtReplacer {

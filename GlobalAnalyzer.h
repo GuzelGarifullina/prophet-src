@@ -20,6 +20,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include "ASTUtils.h"
 
 namespace clang {
     class ASTContext;
@@ -40,6 +41,7 @@ class GlobalAnalyzer {
     std::set<clang::Expr*> CandidateExprs;
     std::set<clang::Stmt*> CandidateMacroExps;
     std::set<clang::Stmt*> CandidateIfStmts;
+    std::map<std::string, ASTLocTy> FunFistStmts;
 
 public:
 
@@ -50,6 +52,10 @@ public:
     const std::set<clang::FunctionDecl*> & getFuncDecls() {
         return FuncDecls;
     }
+
+    const std::map<std::string, ASTLocTy> & getFunFistStmts(){
+            return FunFistStmts;
+    };
 
     const std::set<clang::VarDecl*> & getGlobalVarDecls() {
         return GlobalVarDecls;
@@ -70,4 +76,7 @@ public:
     ExprListTy getCandidateEnumConstant(clang::EnumConstantDecl *ECD);
 
     void dump(bool pretty = true);
+    //should be private
+    void addFirstStmt(clang::FunctionDecl *func);
 };
+

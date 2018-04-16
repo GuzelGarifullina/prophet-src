@@ -668,29 +668,20 @@ std::set<Expr*> LocalAnalyzer::getGlobalCandidateExprs() {
     return res;
 }
 
-std::set<clang::Stmt*> LocalAnalyzer::getGlobalCandidateFunctionFirstExpressions(Stmt* stmt) {
-    //std::set<clang::FunctionDecl*>  funcs = G->getFuncDecls();
 
-    std::set<Stmt*> res;
+std::set<ASTLocTy> LocalAnalyzer::getGlobalCandidateFunctionFirstExpressions(Stmt* stmt) {
+    std::map<std::string, ASTLocTy>  funcs = G->getFunFistStmts();
+
+    std::set<ASTLocTy> res;
     res.clear();
 
-    /*for (std::set<FunctionDecl*>::iterator func = funcs.begin(); func != funcs.end(); ++func){
+    for (std::map<std::string, ASTLocTy>::iterator name_func = funcs.begin(); name_func != funcs.end(); ++name_func){
         //(*func)->getNameAsString()
-        Stmt *funcBody = (*func)->getBody();
-        if (!(funcBody)){
-            continue;
-        }
-        CompoundStmt *compountStmt = llvm::dyn_cast<CompoundStmt>(funcBody);
-        if (! compountStmt){
-            continue;
-        }
-        Stmt *firstStmt =*(compountStmt->body_begin());
-        if (!firstStmt){
-            continue;
-        }
-        res.insert(duplicateStmt(ctxt, firstStmt));
-    }*/
-    res.insert(duplicateStmt(ctxt, stmt));
+        ASTLocTy loc = name_func->second;
+        //loc.stmt = duplicateStmt(ctxt, loc.stmt);
+        res.insert(loc);
+    }
+    //res.insert(duplicateStmt(ctxt, stmt));
     return res;
 }
 

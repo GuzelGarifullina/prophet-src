@@ -200,6 +200,8 @@ GlobalAnalyzer::GlobalAnalyzer(ASTContext &C, const std::string &filename): C(C)
 
     GlobalVarDecls.clear();
     FuncDecls.clear();
+    FunFistStmts.clear();
+
     TranslationUnitDecl *TransUnit = C.getTranslationUnitDecl();
     for (DeclContext::decl_iterator it = TransUnit->decls_begin(); it != TransUnit->decls_end(); ++it) {
         VarDecl *VD = llvm::dyn_cast<VarDecl>(*it);
@@ -213,13 +215,40 @@ GlobalAnalyzer::GlobalAnalyzer(ASTContext &C, const std::string &filename): C(C)
             }
         }
         FunctionDecl *FD = llvm::dyn_cast<FunctionDecl>(*it);
-        if (FD && FD->getDeclName().isIdentifier() && (FD->getName() != IS_NEG_HANDLER) && (FD->getName() != UNKNOWN_HOOK))
+        if (FD && FD->getDeclName().isIdentifier() && (FD->getName() != IS_NEG_HANDLER) && (FD->getName() != UNKNOWN_HOOK)){
             FuncDecls.insert(FD);
+            addFirstStmt(FD);
+        }
+
     }
 
     EnumMap.clear();
     EnumDeclVisitor V2(EnumMap);
     V2.TraverseDecl(C.getTranslationUnitDecl());
+}
+
+void GlobalAnalyzer::addFirstStmt(clang::FunctionDecl* func){
+    Stmt *funcBody = func->getBody();
+    if (!(funcBody)){
+        return;
+    }
+    CompoundStmt *compoundStmt = llvm::dyn_cast<CompoundStmt>(funcBody);
+    if (! compoundStmt){
+        return;
+    }
+    Stmt *firstStmt =*(compoundStmt->body_begin());
+    if (!firstStmt){
+        return;
+    }
+    std::string functionName = func->getNameAsString();
+
+    SourceManager &M = C.getSourceManager();
+    SourceLocation exp_loc = M.getExpansionLoc(firstStmt->getLocStart());
+    std::string src_file = M.getFilename(exp_loc);
+
+    ASTLocTy loc = ASTLocTy(filename, src_file, compoundStmt, firstStmt);
+
+    FunFistStmts[functionName] = loc;
 }
 
 void GlobalAnalyzer::dump(bool pretty) {
