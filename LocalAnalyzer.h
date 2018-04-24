@@ -128,7 +128,8 @@ public:
 
     std::set<clang::Expr*> getGlobalCandidateExprs();
 
-    std::set<ASTLocTy> getGlobalCandidateFunctionFirstExpressions(clang::Stmt* stmt);
+    std::set<clang::FunctionDecl*> getGlobalCandidateFunctions();
+    std::set<FuncFirst>  getGlobalCandidateFunctionFirstExpressions(clang::Stmt* stmt);
 
     std::set<clang::Stmt*> getGlobalCandidateIfStmts();
     void dump();

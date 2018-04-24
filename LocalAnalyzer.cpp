@@ -649,7 +649,7 @@ std::set<Expr*> LocalAnalyzer::getCandidateInsertExprs() {
     return ret;
 }
 
-std::set<Stmt*> LocalAnalyzer::getCandidateMacroExps() {
+    std::set<Stmt*> LocalAnalyzer::getCandidateMacroExps() {
     std::set<Stmt*> ret;
     const std::set<Stmt*> &stmts = G->getCandidateMacroExps();
     for (std::set<Stmt*>::const_iterator it = stmts.begin(); it != stmts.end(); ++it) {
@@ -669,17 +669,23 @@ std::set<Expr*> LocalAnalyzer::getGlobalCandidateExprs() {
 }
 
 
-std::set<ASTLocTy> LocalAnalyzer::getGlobalCandidateFunctionFirstExpressions(Stmt* stmt) {
-    std::map<std::string, ASTLocTy>  funcs = G->getFunFistStmts();
 
-    std::set<ASTLocTy> res;
+std::set<FunctionDecl*> LocalAnalyzer::getGlobalCandidateFunctions() {
+    return G->getFuncDecls();
+}
+//std::map<std::string,FuncFirst>
+std::set<FuncFirst> LocalAnalyzer::getGlobalCandidateFunctionFirstExpressions(Stmt* stmt) {
+    std::map<std::string,FuncFirst>  funcs = G->getFunFistStmts();
+
+    std::set<FuncFirst> res;
     res.clear();
 
-    for (std::map<std::string, ASTLocTy>::iterator name_func = funcs.begin(); name_func != funcs.end(); ++name_func){
+    for (std::map<std::string, FuncFirst>::iterator name_func = funcs.begin(); name_func != funcs.end(); ++name_func){
         //(*func)->getNameAsString()
-        ASTLocTy loc = name_func->second;
+        FuncFirst funcFirst = name_func->second;
+        //ASTLocTy loc
         //loc.stmt = duplicateStmt(ctxt, loc.stmt);
-        res.insert(loc);
+        res.insert(funcFirst);
     }
     //res.insert(duplicateStmt(ctxt, stmt));
     return res;

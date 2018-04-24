@@ -91,11 +91,23 @@ struct ASTLocTy {
 
     std::string toString(SourceContextManager &M) const ;
 };
-
-struct  FunctionFirstLoc{
+struct FuncFirst {
+    clang::FunctionDecl* func;
     ASTLocTy loc;
-    clang::Stmt * stmt;
+    FuncFirst(){
+
+    }
+    FuncFirst(clang::FunctionDecl* func, ASTLocTy loc)
+            : func(func), loc(loc) { }
+    bool operator < (const FuncFirst &a) const {
+        //need to change
+        ////////////!!!!!!!!!!!!!!!!!!!!!!!
+        return true;
+    }
+
+    std::string toString(SourceContextManager &M) const ;
 };
+
 class StmtReplacerImpl;
 
 class StmtReplacer {

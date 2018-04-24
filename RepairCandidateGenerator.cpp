@@ -682,57 +682,42 @@ class RepairCandidateGeneratorImpl : public RecursiveASTVisitor<RepairCandidateG
     void genFunctionMutation(Stmt* stmt, bool is_first,bool is_func_block) {
         if (in_yacc_func) return;
         if (naive) return;
+        if (!llvm::isa<CallExpr>(stmt)) {
+            return;
+        }
         ASTLocTy loc = getNowLocation(stmt);
         LocalAnalyzer *L = M.getLocalAnalyzer(loc);
         //L->dump();
-        std::set<ASTLocTy> fun_locs = L->getGlobalCandidateFunctionFirstExpressions(stmt);
-        std::map<std::string, RepairCandidate> tmp_map;
-        tmp_map.clear();
 
-        for (std::set<ASTLocTy>::iterator fun_loc = fun_locs.begin(); fun_loc != fun_locs.end(); ++fun_loc) {
-            Stmt * funStmt = (*fun_loc).stmt;
+        std::set<FuncFirst>  funs = L->getGlobalCandidateFunctionFirstExpressions(stmt);
+        //only print info
+        bool printFunctionCandidates = true;
+        if (printFunctionCandidates){
+            std::ofstream myfile;
+            myfile.open ("example.txt");
+            for (std::set<FuncFirst>::iterator funcFirst = funs.begin(); funcFirst != funs.end(); ++funcFirst) {
+
+                std::string name = (*funcFirst).func->getNameAsString();
+                std::string loc = (*funcFirst).loc.filename;
+
+                myfile << name <<  " " << loc <<"\n";
+            }
+            myfile.close();
+        }
+
+        for (std::set<FuncFirst>::iterator funcFirst = funs.begin(); funcFirst != funs.end(); ++funcFirst) {
+            Stmt *funStmt = (*funcFirst).loc.stmt;
             IfStmt *new_IF = deleteStmt(ctxt, funStmt);
             RepairCandidate rc;
             rc.actions.clear();
-            rc.actions.push_back(RepairAction(*fun_loc, RepairAction::ReplaceMutationKind, new_IF));
+            rc.actions.push_back(RepairAction((*funcFirst).loc, RepairAction::ReplaceMutationKind, new_IF));
             rc.actions.push_back(RepairAction(loc,
-                                             RepairAction::InsertMutationKind, funStmt));
-            // FIXME: priority!
-            if (learning)
-                rc.score = getLocScore(stmt);
-            else
-                rc.score = getPriority(stmt) + PRIORITY_ALPHA;
+                                              RepairAction::InsertMutationKind, funStmt));
+            rc.score = 10000000000;
             rc.kind = RepairCandidate::GuardKind;
             rc.is_first = is_first;
             q.push_back(rc);
-            /*RepairCandidate rc;
-            rc.actions.clear();
-
-            if (learning) {
-                rc.score = getLocScore(stmt);
-            }
-            else {
-                rc.score = getPriority(stmt);
-                if (is_first) {
-                    rc.score += PRIORITY_ALPHA;
-                    if (is_func_block)
-                        rc.score += PRIORITY_ALPHA/2;
-                }
-            }
-            rc.kind = RepairCandidate::AddAndReplaceKind;
-            rc.is_first = is_first;
-            tmp_map[stmtToString(*ctxt, *it2)] = rc;*/
         }
-
-        // This tmp_map is used to eliminate identical candidate generated
-        /*for (std::map<std::string, RepairCandidate>::iterator it = tmp_map.begin();
-             it != tmp_map.end(); ++it) {
-            // see TraverseFuncDecl, some hacky way to fix loc score for is_first && is_func_block
-            if (is_first && is_func_block)
-                tmp_memo.push_back(q.size());
-            q.push_back(it->second);
-        }*/
-
 
     }
     void genAddStatement(Stmt* n, bool is_first, bool is_func_block) {

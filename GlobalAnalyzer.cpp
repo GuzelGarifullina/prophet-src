@@ -217,7 +217,11 @@ GlobalAnalyzer::GlobalAnalyzer(ASTContext &C, const std::string &filename): C(C)
         FunctionDecl *FD = llvm::dyn_cast<FunctionDecl>(*it);
         if (FD && FD->getDeclName().isIdentifier() && (FD->getName() != IS_NEG_HANDLER) && (FD->getName() != UNKNOWN_HOOK)){
             FuncDecls.insert(FD);
-            addFirstStmt(FD);
+            //addFirstStmt(FD);
+            if (FD->doesThisDeclarationHaveABody()){
+                addFirstStmt(FD);
+            }
+
         }
 
     }
@@ -228,12 +232,15 @@ GlobalAnalyzer::GlobalAnalyzer(ASTContext &C, const std::string &filename): C(C)
 }
 
 void GlobalAnalyzer::addFirstStmt(clang::FunctionDecl* func){
-    Stmt *funcBody = func->getBody();
-    if (!(funcBody)){
+    if (!func->hasBody()){
         return;
     }
+    Stmt *funcBody = func->getBody();
     CompoundStmt *compoundStmt = llvm::dyn_cast<CompoundStmt>(funcBody);
     if (! compoundStmt){
+        return;
+    }
+    if (!compoundStmt->body_begin()){
         return;
     }
     Stmt *firstStmt =*(compoundStmt->body_begin());
@@ -247,8 +254,9 @@ void GlobalAnalyzer::addFirstStmt(clang::FunctionDecl* func){
     std::string src_file = M.getFilename(exp_loc);
 
     ASTLocTy loc = ASTLocTy(filename, src_file, compoundStmt, firstStmt);
+    FuncFirst funcFirst = FuncFirst(func, loc);
 
-    FunFistStmts[functionName] = loc;
+    FunFistStmts[functionName] = funcFirst;
 }
 
 void GlobalAnalyzer::dump(bool pretty) {
