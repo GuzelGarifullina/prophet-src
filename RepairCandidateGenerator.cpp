@@ -675,34 +675,14 @@ class RepairCandidateGeneratorImpl : public RecursiveASTVisitor<RepairCandidateG
         }
     }
 
-
-
     void genFunctionMutation(Stmt* stmt, bool is_first,bool is_func_block) {
         if (in_yacc_func) return;
         if (naive) return;
         if (!llvm::isa<CallExpr>(stmt)) {
             return;
         }
-        ASTLocTy loc = getNowLocation(stmt);
-        LocalAnalyzer *L = M.getLocalAnalyzer(loc);
-        //L->dump();
-
-
-        //only print info
-        bool printFunctionCandidates = false;
-        if (printFunctionCandidates){
-            std::set<FuncFirst>  funs = L->getGlobalCandidateFunctionFirstExpressions();
-            std::ofstream myfile;
-            myfile.open ("functionFirstStmts.txt");
-            for (std::set<FuncFirst>::iterator funcFirst = funs.begin(); funcFirst != funs.end(); ++funcFirst) {
-
-                std::string name = (*funcFirst).func->getNameAsString();
-                std::string loc = (*funcFirst).loc.filename;
-
-                myfile << name <<  " " << loc <<"\n";
-            }
-            myfile.close();
-        }
+        ASTLocTy curLoc = getNowLocation(stmt);
+        LocalAnalyzer *L = M.getLocalAnalyzer(curLoc);
 
         CallExpr* callexpr = llvm::dyn_cast<CallExpr>(stmt);
         ASTLocTy locFun = L->getFirstStmt(callexpr);
@@ -714,7 +694,7 @@ class RepairCandidateGeneratorImpl : public RecursiveASTVisitor<RepairCandidateG
         RepairCandidate rc;
         rc.actions.clear();
         rc.actions.push_back(RepairAction(locFun, RepairAction::ReplaceMutationKind, new_IF));
-        rc.actions.push_back(RepairAction(loc,
+        rc.actions.push_back(RepairAction(curLoc,
                                               RepairAction::InsertMutationKind, funStmt));
         rc.score = 10000000000;
         rc.kind = RepairCandidate::GuardKind;
