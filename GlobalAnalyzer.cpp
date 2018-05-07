@@ -222,26 +222,26 @@ GlobalAnalyzer::GlobalAnalyzer(ASTContext &C, const std::string &filename): C(C)
             if (FD->doesThisDeclarationHaveABody()){
                 addFirstStmt(FD);
             }
-
         }
-
     }
 
     EnumMap.clear();
     EnumDeclVisitor V2(EnumMap);
     V2.TraverseDecl(C.getTranslationUnitDecl());
 }
-
+std::string getSourceFile (Stmt *stmt, clang::ASTContext &C){
+    SourceManager &M = C.getSourceManager();
+    SourceLocation exp_loc = M.getExpansionLoc(stmt->getLocStart());
+    std::string src_file = M.getFilename(exp_loc);
+    return src_file;
+}
 void GlobalAnalyzer::addFirstStmt(clang::FunctionDecl* func){
     if (!func->hasBody()){
         return;
     }
     Stmt *funcBody = func->getBody();
     CompoundStmt *compoundStmt = llvm::dyn_cast<CompoundStmt>(funcBody);
-    if (! compoundStmt){
-        return;
-    }
-    if (!compoundStmt->body_begin()){
+    if (!compoundStmt || !compoundStmt->body_begin()){
         return;
     }
     Stmt *firstStmt =*(compoundStmt->body_begin());
@@ -249,15 +249,10 @@ void GlobalAnalyzer::addFirstStmt(clang::FunctionDecl* func){
         return;
     }
     std::string functionName = func->getNameAsString();
-
-    SourceManager &M = C.getSourceManager();
-    SourceLocation exp_loc = M.getExpansionLoc(firstStmt->getLocStart());
-    std::string src_file = M.getFilename(exp_loc);
+    std::string src_file = getSourceFile (firstStmt, C);
 
     ASTLocTy loc = ASTLocTy(filename, src_file, compoundStmt, firstStmt);
-    FuncFirst funcFirst = FuncFirst(func, loc);
-
-    FunFistStmts[functionName] = funcFirst;
+    FunFistStmts[functionName] = loc;
 }
 
 void GlobalAnalyzer::dump(bool pretty) {

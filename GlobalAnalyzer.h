@@ -41,7 +41,7 @@ class GlobalAnalyzer {
     std::set<clang::Expr*> CandidateExprs;
     std::set<clang::Stmt*> CandidateMacroExps;
     std::set<clang::Stmt*> CandidateIfStmts;
-    std::map<std::string, FuncFirst> FunFistStmts;
+    std::map<std::string, ASTLocTy> FunFistStmts;
 
 public:
 
@@ -53,7 +53,7 @@ public:
         return FuncDecls;
     }
 
-    const std::map<std::string,FuncFirst> & getFunFistStmts(){
+    const std::map<std::string,ASTLocTy> & getFunFistStmts(){
             return FunFistStmts;
     };
 

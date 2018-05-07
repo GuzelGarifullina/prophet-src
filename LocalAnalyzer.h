@@ -129,7 +129,6 @@ public:
     std::set<clang::Expr*> getGlobalCandidateExprs();
 
     std::set<clang::FunctionDecl*> getGlobalCandidateFunctions();
-    std::set<FuncFirst>  getGlobalCandidateFunctionFirstExpressions();
     ASTLocTy  getFirstStmt(clang::CallExpr* callExpr);
 
     std::set<clang::Stmt*> getGlobalCandidateIfStmts();

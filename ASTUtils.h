@@ -70,11 +70,10 @@ class SourceContextManager;
 struct ASTLocTy {
     std::string filename = "";
     std::string src_file = "";
-    clang::Stmt* parent_stmt;
-    clang::Stmt* stmt;
+    clang::Stmt* parent_stmt = NULL;
+    clang::Stmt* stmt = NULL;
 
     ASTLocTy() { }
-
     ASTLocTy(const std::string &filename, const std::string &src_file,
             clang::Stmt *parent_stmt, clang::Stmt* stmt)
         : filename(filename), src_file(src_file), parent_stmt(parent_stmt),
@@ -87,22 +86,6 @@ struct ASTLocTy {
             return parent_stmt < a.parent_stmt;
         else
             return stmt < a.stmt;
-    }
-
-    std::string toString(SourceContextManager &M) const ;
-};
-struct FuncFirst {
-    clang::FunctionDecl* func;
-    ASTLocTy loc;
-    FuncFirst(){
-
-    }
-    FuncFirst(clang::FunctionDecl* func, ASTLocTy loc)
-            : func(func), loc(loc) { }
-    bool operator < (const FuncFirst &a) const {
-        //need to change
-        ////////////!!!!!!!!!!!!!!!!!!!!!!!
-        return true;
     }
 
     std::string toString(SourceContextManager &M) const ;

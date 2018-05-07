@@ -673,63 +673,32 @@ std::set<Expr*> LocalAnalyzer::getGlobalCandidateExprs() {
 std::set<FunctionDecl*> LocalAnalyzer::getGlobalCandidateFunctions() {
     return G->getFuncDecls();
 }
-//std::map<std::string,FuncFirst>
-std::set<FuncFirst> LocalAnalyzer::getGlobalCandidateFunctionFirstExpressions() {
-    std::map<std::string,FuncFirst>  funcs = G->getFunFistStmts();
-
-    std::set<FuncFirst> res;
-    res.clear();
-
-    for (std::map<std::string, FuncFirst>::iterator name_func = funcs.begin(); name_func != funcs.end(); ++name_func){
-        FuncFirst funcFirst = name_func->second;
-        //loc.stmt = duplicateStmt(ctxt, loc.stmt);
-        res.insert(funcFirst);
-    }
-    return res;
-}
 std::string getCallExprName(CallExpr* callExpr)
 {
     if (callExpr != NULL){
-        QualType q = callExpr->getType();
-        const Type *t = q.getTypePtrOrNull();
+        QualType qualType = callExpr->getType();
+        const Type *pType = qualType.getTypePtrOrNull();
 
-        if(t != NULL)
+        if(pType != NULL)
         {
             FunctionDecl *func = callExpr->getDirectCallee();
             if (func == NULL){
                 return  "";
             }
-
-            DeclarationNameInfo a = func->getNameInfo();
-            std::string c = a.getAsString();
-
-            return c;
+            DeclarationNameInfo declInfo = func->getNameInfo();
+            return declInfo.getAsString();
         }
         return "";
     }
 }
 ASTLocTy LocalAnalyzer::getFirstStmt(clang::CallExpr* callExpr){
-    std::map<std::string,FuncFirst>  funcs = G->getFunFistStmts();
+    std::map<std::string,ASTLocTy>  funcs = G->getFunFistStmts();
     std::string callExprName = getCallExprName(callExpr);
     if(callExprName== "" || funcs.find(callExprName) == funcs.end()){
         return ASTLocTy();
     }
-    //next time map by func decl and check for number of arguments
-    FuncFirst funcFirst = funcs[callExprName];
-
-    bool printC = true;
-    if (printC){
-        std::ofstream myfile;
-        myfile.open ("candidates.txt", std::ios_base::app);
-
-        std::string statement = stmtToString(*ctxt, callExpr);
-        std::string location = loc.filename;
-        myfile << statement <<  " " << location <<" " << callExprName <<  " "
-               << funcFirst.loc.filename <<"\n";
-        myfile.close();
-
-    }
-    return funcFirst.loc;
+    ASTLocTy funcFirstLoc = funcs[callExprName];
+    return funcFirstLoc;
 }
 void LocalAnalyzer::dump() {
     G->dump(true);
