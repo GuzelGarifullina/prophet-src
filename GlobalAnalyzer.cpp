@@ -19,6 +19,8 @@
 #include "SourceContextManager.h"
 #include "Utils.h"
 #include "ASTUtils.h"
+#include "clang/AST/Stmt.h"
+#include "clang/AST/StmtCXX.h"
 #include <clang/AST/ASTContext.h>
 #include <clang/AST/Stmt.h>
 #include <clang/AST/RecursiveASTVisitor.h>
@@ -217,7 +219,6 @@ GlobalAnalyzer::GlobalAnalyzer(ASTContext &C, const std::string &filename): C(C)
         FunctionDecl *FD = llvm::dyn_cast<FunctionDecl>(*it);
         if (FD && FD->getDeclName().isIdentifier() && (FD->getName() != IS_NEG_HANDLER) && (FD->getName() != UNKNOWN_HOOK)){
             FuncDecls.insert(FD);
-            //addFirstStmt(FD);
             if (FD->doesThisDeclarationHaveABody()){
                 addFirstStmt(FD);
             }
@@ -244,7 +245,7 @@ void GlobalAnalyzer::addFirstStmt(clang::FunctionDecl* func){
         return;
     }
     Stmt *firstStmt =*(compoundStmt->body_begin());
-    if (!firstStmt){
+    if (!firstStmt || !llvm::isa<Expr>(firstStmt)){
         return;
     }
     std::string functionName = func->getNameAsString();

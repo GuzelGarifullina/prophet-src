@@ -68,8 +68,8 @@ class SourceContextManager;
 
 
 struct ASTLocTy {
-    std::string filename;
-    std::string src_file;
+    std::string filename = "";
+    std::string src_file = "";
     clang::Stmt* parent_stmt;
     clang::Stmt* stmt;
 

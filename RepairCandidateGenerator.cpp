@@ -380,9 +380,6 @@ IfStmt* duplicateIfStmt(ASTContext *ctxt, IfStmt *IS, Expr* new_cond) {
         return new_IF;
     }
 
-
-
-
     class CallVisitor : public RecursiveASTVisitor<CallVisitor> {
     bool found;
 public:
@@ -679,6 +676,7 @@ class RepairCandidateGeneratorImpl : public RecursiveASTVisitor<RepairCandidateG
     }
 
 
+
     void genFunctionMutation(Stmt* stmt, bool is_first,bool is_func_block) {
         if (in_yacc_func) return;
         if (naive) return;
@@ -689,12 +687,13 @@ class RepairCandidateGeneratorImpl : public RecursiveASTVisitor<RepairCandidateG
         LocalAnalyzer *L = M.getLocalAnalyzer(loc);
         //L->dump();
 
-        std::set<FuncFirst>  funs = L->getGlobalCandidateFunctionFirstExpressions(stmt);
+
         //only print info
-        bool printFunctionCandidates = true;
+        bool printFunctionCandidates = false;
         if (printFunctionCandidates){
+            std::set<FuncFirst>  funs = L->getGlobalCandidateFunctionFirstExpressions();
             std::ofstream myfile;
-            myfile.open ("example.txt");
+            myfile.open ("functionFirstStmts.txt");
             for (std::set<FuncFirst>::iterator funcFirst = funs.begin(); funcFirst != funs.end(); ++funcFirst) {
 
                 std::string name = (*funcFirst).func->getNameAsString();
@@ -705,20 +704,22 @@ class RepairCandidateGeneratorImpl : public RecursiveASTVisitor<RepairCandidateG
             myfile.close();
         }
 
-        for (std::set<FuncFirst>::iterator funcFirst = funs.begin(); funcFirst != funs.end(); ++funcFirst) {
-            Stmt *funStmt = (*funcFirst).loc.stmt;
-            IfStmt *new_IF = deleteStmt(ctxt, funStmt);
-            RepairCandidate rc;
-            rc.actions.clear();
-            rc.actions.push_back(RepairAction((*funcFirst).loc, RepairAction::ReplaceMutationKind, new_IF));
-            rc.actions.push_back(RepairAction(loc,
-                                              RepairAction::InsertMutationKind, funStmt));
-            rc.score = 10000000000;
-            rc.kind = RepairCandidate::GuardKind;
-            rc.is_first = is_first;
-            q.push_back(rc);
+        CallExpr* callexpr = llvm::dyn_cast<CallExpr>(stmt);
+        ASTLocTy locFun = L->getFirstStmt(callexpr);
+        if (locFun.filename == ""){
+            return;
         }
-
+        Stmt *funStmt = locFun.stmt;
+        IfStmt *new_IF = deleteStmt(ctxt, funStmt);
+        RepairCandidate rc;
+        rc.actions.clear();
+        rc.actions.push_back(RepairAction(locFun, RepairAction::ReplaceMutationKind, new_IF));
+        rc.actions.push_back(RepairAction(loc,
+                                              RepairAction::InsertMutationKind, funStmt));
+        rc.score = 10000000000;
+        rc.kind = RepairCandidate::GuardKind;
+        rc.is_first = is_first;
+        q.push_back(rc);
     }
     void genAddStatement(Stmt* n, bool is_first, bool is_func_block) {
         if (in_yacc_func) return;
