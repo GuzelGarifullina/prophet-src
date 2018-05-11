@@ -54,7 +54,9 @@ static std::string replaceSlash(const std::string &str) {
 double computeScores(SourceContextManager &M, FeatureParameter *FP,
         FeatureExtractor &EX, RepairCandidate &rc, bool learning, bool random) {
     if (learning) {
+        //RepairAction::ExprMutationKind
         std::set<clang::Expr*> atoms = rc.getCandidateAtoms();
+        //is atoms empty?
         double best = -1e+20;
         for (std::set<clang::Expr*>::iterator it = atoms.begin(); it != atoms.end(); ++it) {
             FeatureVector vec = EX.extractFeature(M, rc, *it);

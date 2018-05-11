@@ -696,7 +696,11 @@ class RepairCandidateGeneratorImpl : public RecursiveASTVisitor<RepairCandidateG
         rc.actions.push_back(RepairAction(locFun, RepairAction::ReplaceMutationKind, new_IF));
         rc.actions.push_back(RepairAction(curLoc,
                                               RepairAction::InsertMutationKind, funStmt));
-        rc.score = 10000000000;
+        if (learning)
+            rc.score = getLocScore(stmt);
+        else
+            rc.score = getPriority(stmt) + PRIORITY_ALPHA;
+
         rc.kind = RepairCandidate::GuardKind;
         rc.is_first = is_first;
         q.push_back(rc);
