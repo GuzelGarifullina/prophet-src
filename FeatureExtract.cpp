@@ -43,6 +43,7 @@ enum RepairFeatureKind {
     AddControlRepair,
     AddStmtRepair,
     ReplaceStmtRepair,
+    MoveStmtRepair,
     RepairFeatureEnd
 };
 
@@ -60,6 +61,8 @@ std::string repairFidToString(unsigned int fid) {
             return "AddStmtRepair";
         case ReplaceStmtRepair:
             return "ReplaceStmtRepair";
+        case MoveStmtRepair:
+            return "MoveStmtRepair";
         default:
             assert(0);
     }
@@ -581,8 +584,8 @@ FeatureProductSetTy crossMappingProduct(const ValueToFeatureMapTy &m1, const Val
     return ret;
 }
 
-const int kind_m[9] = {CondRepair, CondRepair, GuardRepair, GuardRepair,
-                    AddControlRepair, AddStmtRepair, ReplaceStmtRepair, ReplaceStmtRepair, AddStmtRepair};
+const int kind_m[10] = {CondRepair, CondRepair, GuardRepair, GuardRepair,
+                    AddControlRepair, AddStmtRepair, ReplaceStmtRepair, ReplaceStmtRepair, AddStmtRepair, MoveStmtRepair};
 
 FeatureSetTy extractRepairFeatures(const RepairCandidate &rc) {
     FeatureSetTy ret;

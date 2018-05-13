@@ -701,7 +701,7 @@ class RepairCandidateGeneratorImpl : public RecursiveASTVisitor<RepairCandidateG
         else
             rc.score = getPriority(stmt) + PRIORITY_ALPHA;
 
-        rc.kind = RepairCandidate::GuardKind;
+        rc.kind = RepairCandidate::FunctionMutationKind;
         rc.is_first = is_first;
         q.push_back(rc);
     }
@@ -1064,11 +1064,11 @@ public:
                 loc_map1[n] = loc_map1[ElseCS];
         }
         if (isTainted(n) || isTainted(ThenCS)){
-            //genTightCondition(n);
+            genTightCondition(n);
 
         }
         if (isTainted(n) || isTainted(ElseCS)){
-            //genLooseCondition(n);
+            genLooseCondition(n);
 
         }
         return ret;
@@ -1092,16 +1092,16 @@ public:
 
             if (isTainted(stmt)) {
                 if (llvm::isa<DeclStmt>(stmt) && in_float)
-                    //genDeclStmtChange(llvm::dyn_cast<DeclStmt>(stmt));
+                    genDeclStmtChange(llvm::dyn_cast<DeclStmt>(stmt));
                 // This is to compute whether Stmt stmt is the first
                 // non-decl statement in a CompoundStmt
                 genReplaceStmt(stmt, is_first);
-                //if (!llvm::isa<DeclStmt>(stmt) && !llvm::isa<LabelStmt>(stmt))
-                    //genAddIfGuard(stmt, is_first);
-                //genAddMemset(stmt, is_first);
+                if (!llvm::isa<DeclStmt>(stmt) && !llvm::isa<LabelStmt>(stmt))
+                    genAddIfGuard(stmt, is_first);
+                genAddMemset(stmt, is_first);
                 genFunctionMutation(stmt, is_first, stmt_stack.size() == 2);
-                //genAddStatement(stmt, is_first, stmt_stack.size() == 2);
-                //genAddIfExit(stmt, is_first, stmt_stack.size() == 2);
+                genAddStatement(stmt, is_first, stmt_stack.size() == 2);
+                genAddIfExit(stmt, is_first, stmt_stack.size() == 2);
             }
             else if (llvm::isa<IfStmt>(stmt)) {
                 IfStmt *IFS = llvm::dyn_cast<IfStmt>(stmt);
@@ -1116,7 +1116,7 @@ public:
                         loc_map1[stmt] = loc_map1[thenBlock];
                     else
                         loc_map1[stmt] = loc_map1[firstS];
-                    //genAddStatement(stmt, is_first, stmt_stack.size() == 2);
+                    genAddStatement(stmt, is_first, stmt_stack.size() == 2);
                 }
             }
         }
