@@ -48,6 +48,8 @@ enum RepairFeatureKind {
 };
 
 const size_t MAX_REPAIR_FEATURE_KIND = RepairFeatureEnd;
+const size_t MAX_ACTIONS = 2;
+
 
 std::string repairFidToString(unsigned int fid) {
     switch (fid) {
@@ -493,24 +495,23 @@ public:
         return true;
     }
 
-    void TraverseRC(const RepairCandidate &rc, clang::Expr *abst_v) {
+    void TraverseRC(const RepairCandidate &rc, const RepairAction &repairAction, clang::Expr *abst_v) {
         this->abst_v = abst_v;
         if (abst_v != NULL)
             putValueFeature(abst_v, AbstVAF);
         this->is_replace_strconst = (rc.kind == RepairCandidate::ReplaceStringKind);
-        assert( rc.actions.size() > 0);
-        isReplace = (rc.actions[0].kind == RepairAction::ReplaceMutationKind);
+        isReplace = (repairAction.kind == RepairAction::ReplaceMutationKind);
         if ((rc.kind == RepairCandidate::TightenConditionKind) ||
             (rc.kind == RepairCandidate::LoosenConditionKind) ||
             (rc.kind == RepairCandidate::GuardKind) ||
             (rc.kind == RepairCandidate::SpecialGuardKind)) {
-            IfStmt *IFS = llvm::dyn_cast<IfStmt>((Stmt*)rc.actions[0].ast_node);
+            IfStmt *IFS = llvm::dyn_cast<IfStmt>((Stmt*)repairAction.ast_node);
             putValueFeature(NULL, RStmtCondAF);
             Expr* cond = IFS->getCond();
             TraverseStmt(cond);
         }
         else {
-            TraverseStmt((Stmt*)rc.actions[0].ast_node);
+            TraverseStmt((Stmt*)repairAction.ast_node);
         }
     }
 
@@ -599,11 +600,12 @@ inline void orMap(ValueToFeatureMapTy &m1, const ValueToFeatureMapTy &m2) {
         m1[it->first].insert(it->second.begin(), it->second.end());
 }
 FeatureSetTy extractValueFeature(const std::string &v_str, const RepairCandidate &rc,
+                                 const RepairAction &repairAction,
         SourceContextManager &M, Expr* abst_v, std::map<std::string, Expr*> &valueExprInfo) {
     FeatureSetTy ret;
     ret.clear();
-    ASTContext *ast = M.getSourceContext(rc.actions[0].loc.filename);
-    LocalAnalyzer *L = M.getLocalAnalyzer(rc.actions[0].loc);
+    ASTContext *ast = M.getSourceContext(repairAction.loc.filename);
+    LocalAnalyzer *L = M.getLocalAnalyzer(repairAction.loc);
     /*if (abst_v != NULL) {
         std::string abst_v_str = stmtToString(*ast, abst_v);
         if (abst_v_str == v_str)
@@ -672,17 +674,17 @@ FeatureSetTy extractValueFeature(const std::string &v_str, const RepairCandidate
     return ret;
 }
 
-std::vector<Stmt*> getImmediateFollowStmts(const RepairCandidate &rc) {
+std::vector<Stmt*> getImmediateFollowStmts(const RepairAction &action) {
     std::vector<Stmt*> ret;
     ret.clear();
-    ASTLocTy loc = rc.actions[0].loc;
-    if (rc.actions[0].kind != RepairAction::ReplaceMutationKind) {
+    ASTLocTy loc = action.loc;
+    if (action.kind != RepairAction::ReplaceMutationKind) {
         ret.push_back(loc.stmt);
         return ret;
     }
     else {
         ret.push_back(loc.stmt);
-        IfStmt *IFS = llvm::dyn_cast<IfStmt>((Stmt*)rc.actions[0].ast_node);
+        IfStmt *IFS = llvm::dyn_cast<IfStmt>((Stmt*)action.ast_node);
         Stmt* ElseB = NULL;
         if (IFS) {
             CompoundStmt *CS = llvm::dyn_cast<CompoundStmt>(IFS->getThen());
@@ -761,10 +763,10 @@ std::vector<Stmt*> getImmediateFollowStmts(const RepairCandidate &rc) {
 
 #define LOOKUP_DIS 3
 
-void getLocalStmts(const RepairCandidate &rc, std::vector<Stmt*> &ret_before, std::vector<Stmt*> &ret_after) {
+void getLocalStmts(const RepairAction &repairAction, std::vector<Stmt*> &ret_before, std::vector<Stmt*> &ret_after) {
     ret_before.clear();
     ret_after.clear();
-    ASTLocTy loc = rc.actions[0].loc;
+    ASTLocTy loc = repairAction.loc;
     // Grab all compound stmt that is around the original stmt
     CompoundStmt *CS = llvm::dyn_cast<CompoundStmt>(loc.parent_stmt);
     if (CS) {
@@ -798,7 +800,7 @@ void getLocalStmts(const RepairCandidate &rc, std::vector<Stmt*> &ret_before, st
                 before = false;
         }
     }
-    if (rc.actions[0].kind != RepairAction::ReplaceMutationKind)
+    if (repairAction.kind != RepairAction::ReplaceMutationKind)
         ret_after.push_back(loc.stmt);
 /*    if (rc.actions[0].kind == RepairAction::ReplaceMutationKind) {
         IfStmt *IFS = llvm::dyn_cast<IfStmt>((Stmt*)rc.actions[0].ast_node);
@@ -946,12 +948,15 @@ std::vector<Stmt*> getLocalStmts(const RepairCandidate &rc) {
 
 }
 
-const unsigned int FeatureVector::MAX_FEATURE =
-    MAX_REPAIR_FEATURE_KIND + 3 * MAX_REPAIR_FEATURE_KIND * MAX_ATOM_FEATURE_KIND +
-    3 * MAX_ATOM_FEATURE_KIND * MAX_ATOM_FEATURE_KIND +
-    MAX_ATOM_FEATURE_KIND * MAX_VALUE_FEATURE_KIND;
+const unsigned int MAX_FEATURE_STMT =
+        3 * MAX_REPAIR_FEATURE_KIND * MAX_ATOM_FEATURE_KIND +
+        3 * MAX_ATOM_FEATURE_KIND * MAX_ATOM_FEATURE_KIND +
+        MAX_ATOM_FEATURE_KIND * MAX_VALUE_FEATURE_KIND;
 
-void FeatureExtractor::countResVLoc(ValueToFeatureMapTy resv_loc, std::vector<Stmt*> loc_stmts,
+const unsigned int FeatureVector::MAX_FEATURE =
+    MAX_REPAIR_FEATURE_KIND + MAX_FEATURE_STMT * MAX_ACTIONS;
+
+void FeatureExtractor::countResVLoc(ValueToFeatureMapTy &resv_loc, std::vector<Stmt*> &loc_stmts,
                                          ASTContext *ast) {
     resv_loc.clear();
     for (size_t i = 0; i < loc_stmts.size(); i++) {
@@ -967,8 +972,8 @@ void FeatureExtractor::countResVLoc(ValueToFeatureMapTy resv_loc, std::vector<St
     }
 
 }
-void FeatureExtractor::computeModificationFeatures(ValueToFeatureMapTy resv_loc,
-                                                   std::set<unsigned int> retVec, FeatureSetTy res1,
+void FeatureExtractor::computeModificationFeatures(ValueToFeatureMapTy &resv_loc,
+                                                   std::set<unsigned int> &retVec, FeatureSetTy &res1,
                                                    const size_t ATOM_V_BASE){
     ValueToFeatureMapTy::iterator fit = resv_loc.find("");
     if (fit != resv_loc.end()) {
@@ -979,26 +984,64 @@ void FeatureExtractor::computeModificationFeatures(ValueToFeatureMapTy resv_loc,
 
 }
 
-FeatureVector FeatureExtractor::extractFeature(SourceContextManager &M,
-        const RepairCandidate &rc, clang::Expr* insVar) {
-    std::set<unsigned int> retVec;
-    FeatureSetTy res1 = extractRepairFeatures(rc);
-    ValueToFeatureMapTy resv, resv_loc, resv_loc1, resv_loc2;
+void FeatureExtractor::computeSemanticCrossFeatures(ValueToFeatureMapTy &resv_loc,
+                                                    std::set<unsigned int> &retVec, ValueToFeatureMapTy &resv,
+                                                    const size_t ATOM_V_BASE){
 
+    FeatureProductSetTy tmp = crossMappingProduct(resv, resv_loc, valueExprInfo);
+    for (FeatureProductSetTy::iterator it = tmp.begin(); it != tmp.end(); it++){
+        retVec.insert(ATOM_V_BASE + it->first * MAX_ATOM_FEATURE_KIND + it->second);
+    }
+}
+FeatureVector FeatureExtractor::extractFeature(SourceContextManager &M,
+                                               const RepairCandidate &rc, clang::Expr* insVar) {
+    std::set<unsigned int> retVec;
     retVec.clear();
+
+    FeatureSetTy res1 = extractRepairFeatures(rc);
     if (!DisableModificationFeatures.getValue())
         for (FeatureSetTy::iterator it = res1.begin(); it != res1.end(); it++) {
             retVec.insert(*it);
         }
 
+
+    size_t size = rc.actions.size();
+    if (size > MAX_ACTIONS){
+        size = MAX_ACTIONS;
+    }
+
+    for (size_t i=0; i < size; ++i){
+        RepairAction action = rc.actions[i];
+        if (action.kind == RepairAction::ExprMutationKind){
+            continue;
+        }
+        extractFeatureAction (retVec,rc,action, i, res1, M, insVar);
+    }
+
+    FeatureVector ret;
+    ret.clear();
+    ret.insert(ret.begin(), retVec.begin(), retVec.end());
+    return ret;
+}
+
+void FeatureExtractor::extractFeatureAction(std::set<unsigned int> &retVec,
+                                            const RepairCandidate &rc,
+                                            const RepairAction &action,
+                                            size_t action_id,
+                                            FeatureSetTy &res1, SourceContextManager &M,
+                                            clang::Expr* insVar) {
+
+
+    ValueToFeatureMapTy resv, resv_loc, resv_loc1, resv_loc2;
     {
-        ASTContext *ast = M.getSourceContext(rc.actions[0].loc.filename);
+        ASTContext *ast = M.getSourceContext(action.loc.filename);
         FeatureExtractVisitor FEV(ast, valueExprInfo);
-        FEV.TraverseRC(rc, insVar);
+        FEV.TraverseRC(rc, action, insVar);
         resv = FEV.getFeatureResult();
-        std::vector<Stmt*> loc_stmts = getImmediateFollowStmts(rc); //getLocalStmts(rc);
+
+        std::vector<Stmt*> loc_stmts = getImmediateFollowStmts(action); //getLocalStmts(rc);
         std::vector<Stmt*> loc1_stmts, loc2_stmts; // = getLocalStmts(rc);
-        getLocalStmts(rc, loc1_stmts, loc2_stmts);
+        getLocalStmts(action, loc1_stmts, loc2_stmts);
 
         countResVLoc(resv_loc,loc_stmts,ast);
         countResVLoc(resv_loc1,loc1_stmts,ast);
@@ -1006,8 +1049,9 @@ FeatureVector FeatureExtractor::extractFeature(SourceContextManager &M,
 
     }
 
+    size_t BASE = MAX_REPAIR_FEATURE_KIND +  MAX_FEATURE_STMT * action_id;
     {
-        const size_t ATOM_BASE = MAX_REPAIR_FEATURE_KIND;
+        const size_t ATOM_BASE = BASE;
         if (!DisableModificationFeatures.getValue()) {
             computeModificationFeatures(resv_loc,retVec, res1, ATOM_BASE );
             computeModificationFeatures(resv_loc1,retVec, res1, ATOM_BASE+ MAX_REPAIR_FEATURE_KIND * MAX_ATOM_FEATURE_KIND);
@@ -1021,43 +1065,34 @@ FeatureVector FeatureExtractor::extractFeature(SourceContextManager &M,
     }
 
     {
-        const size_t ATOM_V_BASE = MAX_REPAIR_FEATURE_KIND +
+        const size_t ATOM_V_BASE = BASE +
             3 * MAX_REPAIR_FEATURE_KIND * MAX_ATOM_FEATURE_KIND;
         if (!DisableSemanticCrossFeatures.getValue()) {
-            FeatureProductSetTy tmp;
-            tmp = crossMappingProduct(resv, resv_loc, valueExprInfo);
-            for (FeatureProductSetTy::iterator it = tmp.begin(); it != tmp.end(); it++)
-                retVec.insert(ATOM_V_BASE + it->first * MAX_ATOM_FEATURE_KIND + it->second);
-            tmp = crossMappingProduct(resv, resv_loc1, valueExprInfo);
-            for (FeatureProductSetTy::iterator it = tmp.begin(); it != tmp.end(); it++)
-                retVec.insert(ATOM_V_BASE + MAX_ATOM_FEATURE_KIND * MAX_ATOM_FEATURE_KIND + it->first * MAX_ATOM_FEATURE_KIND + it->second);
-            tmp = crossMappingProduct(resv, resv_loc2, valueExprInfo);
-            for (FeatureProductSetTy::iterator it = tmp.begin(); it != tmp.end(); it++)
-                retVec.insert(ATOM_V_BASE + 2 * MAX_ATOM_FEATURE_KIND * MAX_ATOM_FEATURE_KIND + it->first * MAX_ATOM_FEATURE_KIND + it->second);
+            computeSemanticCrossFeatures(resv_loc,retVec, resv, ATOM_V_BASE);
+            computeSemanticCrossFeatures(resv_loc1,retVec, resv, ATOM_V_BASE + MAX_ATOM_FEATURE_KIND * MAX_ATOM_FEATURE_KIND);
+            computeSemanticCrossFeatures(resv_loc2,retVec, resv, ATOM_V_BASE + 2 * MAX_ATOM_FEATURE_KIND * MAX_ATOM_FEATURE_KIND);
         }
     }
 
     {
-        const size_t ATOM_V2_BASE = MAX_REPAIR_FEATURE_KIND +
+        const size_t ATOM_V2_BASE = BASE +
             3 * MAX_REPAIR_FEATURE_KIND * MAX_ATOM_FEATURE_KIND +
             3 * MAX_ATOM_FEATURE_KIND * MAX_ATOM_FEATURE_KIND;
         if (!DisableSemanticValueFeatures.getValue()) {
             for (ValueToFeatureMapTy::iterator it = resv.begin(); it != resv.end(); ++it) {
-                FeatureSetTy vset = extractValueFeature(it->first, rc, M, insVar, valueExprInfo);
+                FeatureSetTy vset = extractValueFeature(it->first, rc, action, M, insVar, valueExprInfo);
                 FeatureProductSetTy prod = computeProduct(it->second, vset);
                 for (FeatureProductSetTy::iterator it2 = prod.begin(); it2 != prod.end(); ++it2)
                     retVec.insert(ATOM_V2_BASE + (it2->first) * MAX_VALUE_FEATURE_KIND + it2->second);
             }
         }
     }
-
-    FeatureVector ret;
-    ret.clear();
-    ret.insert(ret.begin(), retVec.begin(), retVec.end());
-    return ret;
 }
 
 std::string FeatureVector::fidToString(unsigned int fid) {
+    while (fid >= MAX_REPAIR_FEATURE_KIND +  MAX_FEATURE_STMT){
+        fid -= MAX_FEATURE_STMT;
+    }
     const unsigned int GLOBAL_FEATURE_BASE = MAX_REPAIR_FEATURE_KIND;
     const unsigned int CROSS_FEATURE_BASE = GLOBAL_FEATURE_BASE +
         3 * MAX_REPAIR_FEATURE_KIND * MAX_ATOM_FEATURE_KIND;
