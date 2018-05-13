@@ -598,7 +598,6 @@ inline void orMap(ValueToFeatureMapTy &m1, const ValueToFeatureMapTy &m2) {
     for (ValueToFeatureMapTy::const_iterator it = m2.begin(); it != m2.end(); ++it)
         m1[it->first].insert(it->second.begin(), it->second.end());
 }
-
 FeatureSetTy extractValueFeature(const std::string &v_str, const RepairCandidate &rc,
         SourceContextManager &M, Expr* abst_v, std::map<std::string, Expr*> &valueExprInfo) {
     FeatureSetTy ret;
@@ -952,6 +951,34 @@ const unsigned int FeatureVector::MAX_FEATURE =
     3 * MAX_ATOM_FEATURE_KIND * MAX_ATOM_FEATURE_KIND +
     MAX_ATOM_FEATURE_KIND * MAX_VALUE_FEATURE_KIND;
 
+void FeatureExtractor::countResVLoc(ValueToFeatureMapTy resv_loc, std::vector<Stmt*> loc_stmts,
+                                         ASTContext *ast) {
+    resv_loc.clear();
+    for (size_t i = 0; i < loc_stmts.size(); i++) {
+        if (cache.count(loc_stmts[i]))
+            orMap(resv_loc, cache[loc_stmts[i]]);
+        else {
+            FeatureExtractVisitor FEV(ast, valueExprInfo);
+            FEV.TraverseStmt(loc_stmts[i]);
+            ValueToFeatureMapTy resM = FEV.getFeatureResult();
+            orMap(resv_loc, resM);
+            cache[loc_stmts[i]] = resM;
+        }
+    }
+
+}
+void FeatureExtractor::computeModificationFeatures(ValueToFeatureMapTy resv_loc,
+                                                   std::set<unsigned int> retVec, FeatureSetTy res1,
+                                                   const size_t ATOM_V_BASE){
+    ValueToFeatureMapTy::iterator fit = resv_loc.find("");
+    if (fit != resv_loc.end()) {
+        FeatureProductSetTy prod = computeProduct(res1, fit->second);
+        for (FeatureProductSetTy::iterator it = prod.begin(); it != prod.end(); ++it)
+            retVec.insert(ATOM_V_BASE + (it->first) * MAX_ATOM_FEATURE_KIND + it->second);
+    }
+
+}
+
 FeatureVector FeatureExtractor::extractFeature(SourceContextManager &M,
         const RepairCandidate &rc, clang::Expr* insVar) {
     std::set<unsigned int> retVec;
@@ -972,65 +999,19 @@ FeatureVector FeatureExtractor::extractFeature(SourceContextManager &M,
         std::vector<Stmt*> loc_stmts = getImmediateFollowStmts(rc); //getLocalStmts(rc);
         std::vector<Stmt*> loc1_stmts, loc2_stmts; // = getLocalStmts(rc);
         getLocalStmts(rc, loc1_stmts, loc2_stmts);
-        resv_loc.clear();
-        resv_loc1.clear();
-        resv_loc2.clear();
-        for (size_t i = 0; i < loc_stmts.size(); i++) {
-            if (cache.count(loc_stmts[i]))
-                orMap(resv_loc, cache[loc_stmts[i]]);
-            else {
-                FeatureExtractVisitor FEV(ast, valueExprInfo);
-                FEV.TraverseStmt(loc_stmts[i]);
-                ValueToFeatureMapTy resM = FEV.getFeatureResult();
-                orMap(resv_loc, resM);
-                cache[loc_stmts[i]] = resM;
-            }
-        }
-        for (size_t i = 0; i < loc1_stmts.size(); i++) {
-            if (cache.count(loc1_stmts[i]))
-                orMap(resv_loc1, cache[loc1_stmts[i]]);
-            else {
-                FeatureExtractVisitor FEV(ast, valueExprInfo);
-                FEV.TraverseStmt(loc1_stmts[i]);
-                ValueToFeatureMapTy resM = FEV.getFeatureResult();
-                orMap(resv_loc1, resM);
-                cache[loc1_stmts[i]] = resM;
-            }
-        }
-        for (size_t i = 0; i < loc2_stmts.size(); i++) {
-            if (cache.count(loc2_stmts[i]))
-                orMap(resv_loc2, cache[loc2_stmts[i]]);
-            else {
-                FeatureExtractVisitor FEV(ast, valueExprInfo);
-                FEV.TraverseStmt(loc2_stmts[i]);
-                ValueToFeatureMapTy resM = FEV.getFeatureResult();
-                orMap(resv_loc2, resM);
-                cache[loc2_stmts[i]] = resM;
-            }
-        }
+
+        countResVLoc(resv_loc,loc_stmts,ast);
+        countResVLoc(resv_loc1,loc1_stmts,ast);
+        countResVLoc(resv_loc2,loc2_stmts,ast);
+
     }
 
     {
         const size_t ATOM_BASE = MAX_REPAIR_FEATURE_KIND;
         if (!DisableModificationFeatures.getValue()) {
-            ValueToFeatureMapTy::iterator fit = resv_loc.find("");
-            if (fit != resv_loc.end()) {
-                FeatureProductSetTy prod = computeProduct(res1, fit->second);
-                for (FeatureProductSetTy::iterator it = prod.begin(); it != prod.end(); ++it)
-                    retVec.insert(ATOM_BASE + (it->first) * MAX_ATOM_FEATURE_KIND + it->second);
-            }
-            fit = resv_loc1.find("");
-            if (fit != resv_loc1.end()) {
-                FeatureProductSetTy prod = computeProduct(res1, fit->second);
-                for (FeatureProductSetTy::iterator it = prod.begin(); it != prod.end(); ++it)
-                    retVec.insert(ATOM_BASE + MAX_REPAIR_FEATURE_KIND * MAX_ATOM_FEATURE_KIND + (it->first) * MAX_ATOM_FEATURE_KIND + it->second);
-            }
-            fit = resv_loc2.find("");
-            if (fit != resv_loc2.end()) {
-                FeatureProductSetTy prod = computeProduct(res1, fit->second);
-                for (FeatureProductSetTy::iterator it = prod.begin(); it != prod.end(); ++it)
-                    retVec.insert(ATOM_BASE + 2 * MAX_REPAIR_FEATURE_KIND * MAX_ATOM_FEATURE_KIND + (it->first) * MAX_ATOM_FEATURE_KIND + it->second);
-            }
+            computeModificationFeatures(resv_loc,retVec, res1, ATOM_BASE );
+            computeModificationFeatures(resv_loc1,retVec, res1, ATOM_BASE+ MAX_REPAIR_FEATURE_KIND * MAX_ATOM_FEATURE_KIND);
+            computeModificationFeatures(resv_loc2,retVec, res1, ATOM_BASE + 2 * MAX_REPAIR_FEATURE_KIND * MAX_ATOM_FEATURE_KIND);
         }
 
         resv.erase("");

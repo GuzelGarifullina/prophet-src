@@ -20,10 +20,12 @@
 #include <string>
 #include <map>
 #include <set>
+#include <clang/AST/ASTContext.h>
 
 namespace clang {
     class Expr;
     class Stmt;
+    class ASTContext;
 }
 
 class SourceContextManager;
@@ -100,4 +102,10 @@ public:
 
     FeatureVector extractFeature(SourceContextManager &M,
         const RepairCandidate &rc, clang::Expr* insVar);
+private:
+    void countResVLoc(ValueToFeatureMapTy resv_loc, std::vector<clang::Stmt*> loc_stmts,
+                                            clang::ASTContext *ast);
+    void computeModificationFeatures(ValueToFeatureMapTy resv_loc,
+                                                       std::set<unsigned int> retVec, FeatureSetTy res1,
+                                                       const size_t ATOM_V_BASE);
 };
