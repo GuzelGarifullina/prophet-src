@@ -209,7 +209,8 @@ static bool matchMoveKindCandidate(const RepairCandidate &rc, ASTDiffer &differ,
     ASTContext *ast1 = differ.getAST1();
     ASTContext *ast2 = differ.getAST2();
 
-    Stmt *S1 = (Stmt*)rc.actions[1].ast_node;
+    //Insert first func stmt
+    Stmt *S1 = (Stmt*)rc.actions[0].ast_node;
     Stmt *S2 = res[0].Node2.stmt;
     bool isSame = sameStmtByString(ast1, S1, ast2, S2);
     S2 = res[1].Node1.stmt;
@@ -705,8 +706,7 @@ int main(int argc, char **argv) {
             std::set<Expr*> insMatchSet;
             assert( spaces[i].actions.size() > 0);
             bool res = false;
-            if ((spaces[i].actions[0].loc.stmt == locStmt) ||
-                    ((spaces[i].actions.size() == 2) && (spaces[i].actions[1].loc.stmt == locStmt))){
+            if (spaces[i].actions[0].loc.stmt == locStmt){
                 res = matchCandidateWithHumanFix(spaces[i], differ, insMatchSet);
             }
             bool found_candidate = false;
