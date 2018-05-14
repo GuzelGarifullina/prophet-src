@@ -691,13 +691,14 @@ class RepairCandidateGeneratorImpl : public RecursiveASTVisitor<RepairCandidateG
         if (locFun.filename == ""){
             return;
         }
-        Stmt *funStmt = locFun.stmt;
-        IfStmt *new_IF = deleteStmt(ctxt, funStmt);
+        Stmt *funStmt = duplicateStmt(ctxt , locFun.stmt);
+        IfStmt *new_IF = deleteStmt(ctxt, duplicateStmt(ctxt , locFun.stmt));
         RepairCandidate rc;
         rc.actions.clear();
-        rc.actions.push_back(RepairAction(locFun, RepairAction::ReplaceMutationKind, new_IF));
         rc.actions.push_back(RepairAction(curLoc,
                                               RepairAction::InsertMutationKind, funStmt));
+        rc.actions.push_back(RepairAction(locFun, RepairAction::ReplaceMutationKind, new_IF));
+
 
 
         if (learning)
@@ -1095,13 +1096,15 @@ public:
             is_first = is_first && !llvm::isa<DeclStmt>(stmt);
 
             if (isTainted(stmt)) {
-                if (llvm::isa<DeclStmt>(stmt) && in_float)
+                if (llvm::isa<DeclStmt>(stmt) && in_float){
                     genDeclStmtChange(llvm::dyn_cast<DeclStmt>(stmt));
+                }
                 // This is to compute whether Stmt stmt is the first
                 // non-decl statement in a CompoundStmt
                 genReplaceStmt(stmt, is_first);
-                if (!llvm::isa<DeclStmt>(stmt) && !llvm::isa<LabelStmt>(stmt))
+                if (!llvm::isa<DeclStmt>(stmt) && !llvm::isa<LabelStmt>(stmt)){
                     genAddIfGuard(stmt, is_first);
+                }
                 genAddMemset(stmt, is_first);
                 genFunctionMutation(stmt, is_first, stmt_stack.size() == 2);
                 genAddStatement(stmt, is_first, stmt_stack.size() == 2);
