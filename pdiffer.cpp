@@ -193,11 +193,50 @@ bool sameStmtByString(ASTContext *ast1, Stmt* S1, ASTContext *ast2, Stmt* S2) {
     return tmps1 == tmps2;
 }
 
+static bool matchMoveKindCandidate(const RepairCandidate &rc, ASTDiffer &differ, std::set<clang::Expr*> &insMatchSet) {
+    std::vector<DiffResultEntry> res;
+    differ.GetDiffResultForStmt(res);
+
+    if (rc.kind != RepairCandidate::FunctionMutationKind){
+        return false;
+    }
+
+    if (res[0].DiffActionKind == ASTDiffer::DeleteAction ){
+        DiffResultEntry t = res[0];
+        res[0] = res[1];
+        res[1] = t;
+    }
+    if (!(res[0].DiffActionKind == ASTDiffer::InsertAction
+          && res[1].DiffActionKind == ASTDiffer::DeleteAction
+            && res[0].NodeKind2 == ASTDiffer::StmtKind && res[1].NodeKind2 == ASTDiffer::StmtKind)){
+        return false;
+    }
+    insMatchSet.clear();
+    insMatchSet.insert(NULL);
+
+    ASTContext *ast1 = differ.getAST1();
+    ASTContext *ast2 = differ.getAST2();
+
+    Stmt *S1 = (Stmt*)rc.actions[0].ast_node;
+    Stmt *S2 = res[0].Node2.stmt;
+    bool isSame = sameStmtByString(ast1, S1, ast2, S2);
+
+    *S2 = res[1].Node2.stmt;
+    isSame &= sameStmtByString(ast1, S1, ast2, S2);
+
+    return isSame;
+}
+
+
 static bool matchCandidateWithHumanFix(const RepairCandidate &rc, ASTDiffer &differ, std::set<clang::Expr*> &insMatchSet) {
     std::vector<DiffResultEntry> res;
     differ.GetDiffResultForStmt(res);
-    if (res.size() != 1)
+    if (res.size() != 1){
+        if (res.size() == 2){
+            return  matchMoveKindCandidate(rc,differ, insMatchSet);
+        }
         return false;
+    }
     DiffResultEntry res0 = res[0];
     ASTContext *ast1 = differ.getAST1();
     ASTContext *ast2 = differ.getAST2();
@@ -632,7 +671,7 @@ int main(int argc, char **argv) {
             fprintf(stdout, "No AST difference!\n");
             return 1;
         }
-        if (res.size() > 1) {
+        if (res.size() > 2) {
             fprintf(stdout, "Outside repair space!\n");
             return 1;
         }
@@ -660,7 +699,7 @@ int main(int argc, char **argv) {
             llvm::outs() << "Total candidate: " << spaces.size() << "\n";
             f.open(feature_file.c_str(), std::ofstream::out);
         }
-        FeatureExtractor EX;
+        FeatureExtract1or EX;
         for (size_t i = 0; i < spaces.size(); i++) {
             //llvm::errs() << i << "\n";
             std::set<Expr*> insSet = spaces[i].getCandidateAtoms();
