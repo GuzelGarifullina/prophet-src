@@ -26,6 +26,7 @@
 #include "clang/AST/RecursiveASTVisitor.h"
 #include <queue>
 #include <math.h>
+#include <iostream>
 
 //#define DISABLE_IFSTMT_INSERT
 
@@ -678,6 +679,7 @@ class RepairCandidateGeneratorImpl : public RecursiveASTVisitor<RepairCandidateG
     void genFunctionMutation(Stmt* stmt, bool is_first,bool is_func_block) {
         if (in_yacc_func) return;
         if (naive) return;
+        std::cout << stmtToString(*ctxt, stmt) << std::endl;
         if (!llvm::isa<CallExpr>(stmt)) {
             return;
         }
@@ -693,9 +695,9 @@ class RepairCandidateGeneratorImpl : public RecursiveASTVisitor<RepairCandidateG
         IfStmt *new_IF = deleteStmt(ctxt, funStmt);
         RepairCandidate rc;
         rc.actions.clear();
+        rc.actions.push_back(RepairAction(locFun, RepairAction::ReplaceMutationKind, new_IF));
         rc.actions.push_back(RepairAction(curLoc,
                                               RepairAction::InsertMutationKind, funStmt));
-        rc.actions.push_back(RepairAction(locFun, RepairAction::ReplaceMutationKind, new_IF));
 
 
         if (learning)
