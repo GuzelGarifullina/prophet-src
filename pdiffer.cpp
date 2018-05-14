@@ -200,15 +200,7 @@ static bool matchMoveKindCandidate(const RepairCandidate &rc, ASTDiffer &differ,
     if (rc.kind != RepairCandidate::FunctionMutationKind){
         return false;
     }
-
-    if (res[0].DiffActionKind == ASTDiffer::DeleteAction ){
-        DiffResultEntry t = res[0];
-        res[0] = res[1];
-        res[1] = t;
-    }
-    if (!(res[0].DiffActionKind == ASTDiffer::InsertAction
-          && res[1].DiffActionKind == ASTDiffer::DeleteAction
-            && res[0].NodeKind2 == ASTDiffer::StmtKind && res[1].NodeKind2 == ASTDiffer::StmtKind)){
+    if (!(res[0].NodeKind2 == ASTDiffer::StmtKind && res[1].NodeKind2 == ASTDiffer::StmtKind)){
         return false;
     }
     insMatchSet.clear();
@@ -220,10 +212,9 @@ static bool matchMoveKindCandidate(const RepairCandidate &rc, ASTDiffer &differ,
     Stmt *S1 = (Stmt*)rc.actions[0].ast_node;
     Stmt *S2 = res[0].Node2.stmt;
     bool isSame = sameStmtByString(ast1, S1, ast2, S2);
+    S2 = res[1].Node1.stmt;
 
-    *S2 = res[1].Node2.stmt;
     isSame &= sameStmtByString(ast1, S1, ast2, S2);
-
     return isSame;
 }
 
@@ -671,9 +662,17 @@ int main(int argc, char **argv) {
             fprintf(stdout, "No AST difference!\n");
             return 1;
         }
-        if (res.size() > 2) {
-            fprintf(stdout, "Outside repair space!\n");
-            return 1;
+        if (res.size() == 2){
+            if (res[0].DiffActionKind == ASTDiffer::DeleteAction ){
+                DiffResultEntry t = res[0];
+                res[0] = res[1];
+                res[1] = t;
+            }
+            if (!(res[0].DiffActionKind == ASTDiffer::InsertAction
+                  && res[1].DiffActionKind == ASTDiffer::DeleteAction)){
+                fprintf(stdout, "Outside repair space!\n");
+                return 1;
+            }
         }
         if (res[0].NodeKind1 != ASTDiffer::StmtKind) {
             fprintf(stdout, "Outside repair space!\n");
@@ -681,6 +680,7 @@ int main(int argc, char **argv) {
         }
 
         clang::Stmt* locStmt = (clang::Stmt*)res[0].Node1.stmt;
+        clang::Stmt* locStmt2 = (clang::Stmt*)res[0].Node2.stmt;
         if (locStmt && llvm::isa<NullStmt>(locStmt)) {
             fprintf(stdout, "Ignore null stmt!\n");
             return 1;
@@ -699,14 +699,14 @@ int main(int argc, char **argv) {
             llvm::outs() << "Total candidate: " << spaces.size() << "\n";
             f.open(feature_file.c_str(), std::ofstream::out);
         }
-        FeatureExtract1or EX;
+        FeatureExtractor EX;
         for (size_t i = 0; i < spaces.size(); i++) {
             //llvm::errs() << i << "\n";
             std::set<Expr*> insSet = spaces[i].getCandidateAtoms();
             std::set<Expr*> insMatchSet;
             assert( spaces[i].actions.size() > 0);
             bool res = false;
-            if (spaces[i].actions[0].loc.stmt == locStmt)
+            if (spaces[i].actions[0].loc.stmt == locStmt2 || spaces[i].actions[0].loc.stmt == locStmt)
                 res = matchCandidateWithHumanFix(spaces[i], differ, insMatchSet);
             bool found_candidate = false;
             for (std::set<clang::Expr*>::iterator it =insSet.begin(); it != insSet.end(); it ++) {

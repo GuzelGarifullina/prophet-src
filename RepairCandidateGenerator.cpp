@@ -693,9 +693,11 @@ class RepairCandidateGeneratorImpl : public RecursiveASTVisitor<RepairCandidateG
         IfStmt *new_IF = deleteStmt(ctxt, funStmt);
         RepairCandidate rc;
         rc.actions.clear();
-        rc.actions.push_back(RepairAction(locFun, RepairAction::ReplaceMutationKind, new_IF));
         rc.actions.push_back(RepairAction(curLoc,
                                               RepairAction::InsertMutationKind, funStmt));
+        rc.actions.push_back(RepairAction(locFun, RepairAction::ReplaceMutationKind, new_IF));
+
+
         if (learning)
             rc.score = getLocScore(stmt);
         else
