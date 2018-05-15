@@ -669,8 +669,8 @@ int main(int argc, char **argv) {
                 res[0] = res[1];
                 res[1] = t;
             }
-            if (!(res[0].DiffActionKind == ASTDiffer::InsertAction
-                  && res[1].DiffActionKind == ASTDiffer::DeleteAction)){
+            if (res[0].DiffActionKind != ASTDiffer::InsertAction
+                  || res[1].DiffActionKind != ASTDiffer::DeleteAction){
                 fprintf(stdout, "Outside repair space!\n");
                 return 1;
             }
@@ -718,7 +718,7 @@ int main(int argc, char **argv) {
                 if (res && insMatchSet.count(*it)) {
                     vec.setMark();
                     if (!found_candidate) {
-                        //llvm::outs() << "CandidateType: " << spaces[i].kind << "\n";
+                        llvm::outs() << "CandidateType: " << spaces[i].kind << "\n";
                         llvm::outs() << "Candidate:\n" << spaces[i].toString(M) << "\n";
                     }
                     found = true;
