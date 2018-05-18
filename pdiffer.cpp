@@ -675,6 +675,11 @@ int main(int argc, char **argv) {
                 return 1;
             }
         }
+        if (res.size() > 2){
+            fprintf(stdout, "More than 2 stmts\n Has %d changes", res.size());
+            return 1;
+        }
+
         if (res[0].NodeKind1 != ASTDiffer::StmtKind) {
             fprintf(stdout, "Outside repair space!\n");
             return 1;
