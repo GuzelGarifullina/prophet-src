@@ -2,11 +2,8 @@
 #include <memory.h>
 #include <malloc.h>
 
-
 void addArray(int res[], size_t res_size, size_t * res_index_from,
               int a[], size_t a_size){
-    //need to delete
-    * res_index_from = 0;
     memcpy(res + *res_index_from, a, a_size * sizeof(int));
     *res_index_from += a_size;
 
@@ -16,6 +13,7 @@ void combineArrays(int res[], size_t res_size, size_t * res_index_from,
     memset(&res[0], 0, res_size);
 
     addArray(res, res_size, res_index_from, a, a_size);
+    *res_index_from = 0;
     addArray(res, res_size, res_index_from, b, b_size);
 }
 int main() {
@@ -43,6 +41,5 @@ int main() {
     for(size_t i = 0; i < (*res_last_i); i++) {
         printf("%d ", res[i]);
     }
-
     return 0;
 }
