@@ -211,13 +211,13 @@ static bool matchMoveKindCandidate(const RepairCandidate &rc, ASTDiffer &differ,
 
     //Insert first func stmt
     Stmt *S1 = (Stmt*)rc.actions[0].ast_node;
-    fprintf(stdout, (stmtToString(*ast1, S1) + "\n").c_str() );
+    //fprintf(stdout, (stmtToString(*ast1, S1) + "\n").c_str() );
     Stmt *S2 = res[0].Node2.stmt;
-    fprintf(stdout, (stmtToString(*ast1, S2) + "\n").c_str() );
+    //fprintf(stdout, (stmtToString(*ast1, S2) + "\n").c_str() );
 
     bool isSame = sameStmtByString(ast1, S1, ast2, S2);
     S2 = res[1].Node1.stmt;
-    fprintf(stdout, (stmtToString(*ast1, S2) + "\n").c_str() );
+    //fprintf(stdout, (stmtToString(*ast1, S2) + "\n").c_str() );
 
     isSame &= sameStmtByString(ast1, S1, ast2, S2);
     return isSame;

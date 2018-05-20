@@ -679,7 +679,7 @@ class RepairCandidateGeneratorImpl : public RecursiveASTVisitor<RepairCandidateG
     void genFunctionMutation(Stmt* stmt, bool is_first,bool is_func_block) {
         if (in_yacc_func) return;
         if (naive) return;
-        std::cout << stmtToString(*ctxt, stmt) << std::endl;
+        //std::cout << stmtToString(*ctxt, stmt) << std::endl;
         if (!llvm::isa<CallExpr>(stmt)) {
             return;
         }
