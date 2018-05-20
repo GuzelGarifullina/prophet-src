@@ -1,4 +1,4 @@
 arrayClear
 clearObject
-Error-1
+Error
 globalError
