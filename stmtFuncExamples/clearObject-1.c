@@ -17,25 +17,30 @@ int dummy(struct Books *book);
 int main() {
     struct Books book;
     clearBook(&book);
-
     addTitle(&book, "Lucky");
-
     addAuthor(&book, 1);
 
     int ids[5] = {2,3,4,5,6};
     addAuthors(&book, ids,  5);
     int f = dummy(&book);
+
     fun(&book);
-
-
     f = dummy(&book);
     return 0;
+}
+
+void addAuthors(struct Books *book, int ids[], int size){
+    clearAuthors(book);
+    for (int i = 0 ; i < size; ++i){
+        addAuthor(book, ids[i]);
+    }
 }
 void fun (struct Books *book){
     int id2s[2] = {2,3};
     addTitle(book, "Lo");
     addAuthors(book, id2s,  2);
 }
+
 int dummy(struct Books *book){
     printf("%s ", book->title);
     for(int i = 0; i < book->last_author; i++) {
@@ -45,12 +50,7 @@ int dummy(struct Books *book){
     return 1;
 
 }
-void addAuthors(struct Books *book, int ids[], int size){
-    clearAuthors(book);
-    for (int i = 0 ; i < size; ++i){
-        addAuthor(book, ids[i]);
-    }
-}
+
 
 void clearAuthors(struct Books *book){
     book->last_author = 0;
