@@ -1,6 +1,6 @@
 __tmp/stmtFuncExamples/arrayClear.fvec
 __tmp/stmtFuncExamples/clearObject.fvec
-__tmp/stmtFuncExamples/Error-1.fvec
+__tmp/stmtFuncExamples/Error.fvec
 __tmp/stmtFuncExamples/globalError.fvec
 __tmp/libtiff/45846b7ab3a302c8db654d240639b1f7af1951a4.fvec
 __tmp/libtiff/45846b7ab3a302c8db654d240639b1f7af1951a4.fvec
