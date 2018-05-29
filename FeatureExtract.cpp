@@ -1090,18 +1090,20 @@ void FeatureExtractor::extractFeatureAction(std::set<unsigned int> &retVec,
 }
 
 std::string FeatureVector::fidToString(unsigned int fid) {
+    int id = 1;
     while (fid >= MAX_REPAIR_FEATURE_KIND +  MAX_FEATURE_STMT){
         fid -= MAX_FEATURE_STMT;
+        ++id;
     }
     const unsigned int GLOBAL_FEATURE_BASE = MAX_REPAIR_FEATURE_KIND;
     const unsigned int CROSS_FEATURE_BASE = GLOBAL_FEATURE_BASE +
         3 * MAX_REPAIR_FEATURE_KIND * MAX_ATOM_FEATURE_KIND;
     const unsigned int VALUE_FEATURE_BASE = CROSS_FEATURE_BASE +
         3 * MAX_ATOM_FEATURE_KIND * MAX_ATOM_FEATURE_KIND;
-    std::string ret;
+    std::string ret = std::to_string(id) + " ";
     // this is a repair kind feature
     if (fid < GLOBAL_FEATURE_BASE) {
-        ret = repairFidToString(fid % MAX_REPAIR_FEATURE_KIND);
+        ret += repairFidToString(fid % MAX_REPAIR_FEATURE_KIND);
         /*
         if (fid < MAX_REPAIR_FEATURE_KIND)
             ret += " X !is_first";
@@ -1113,17 +1115,17 @@ std::string FeatureVector::fidToString(unsigned int fid) {
         // this is a global feature
         unsigned int tmp = fid - GLOBAL_FEATURE_BASE;
         if (tmp < MAX_REPAIR_FEATURE_KIND * MAX_ATOM_FEATURE_KIND) {
-            ret = "GLOBAL " + repairFidToString(tmp / MAX_ATOM_FEATURE_KIND) + " X " +
+            ret += "GLOBAL " + repairFidToString(tmp / MAX_ATOM_FEATURE_KIND) + " X " +
                 atomFidToString(tmp % MAX_ATOM_FEATURE_KIND);
         }
         else if (tmp < 2 * MAX_REPAIR_FEATURE_KIND * MAX_ATOM_FEATURE_KIND) {
             tmp -= MAX_REPAIR_FEATURE_KIND * MAX_ATOM_FEATURE_KIND;
-            ret = "GLOBAL- " + repairFidToString(tmp / MAX_ATOM_FEATURE_KIND) + " X " +
+            ret += "GLOBAL- " + repairFidToString(tmp / MAX_ATOM_FEATURE_KIND) + " X " +
                 atomFidToString(tmp % MAX_ATOM_FEATURE_KIND);
         }
         else {
             tmp -= 2 * MAX_REPAIR_FEATURE_KIND * MAX_ATOM_FEATURE_KIND;
-            ret = "GLOBAL+ " + repairFidToString(tmp / MAX_ATOM_FEATURE_KIND) + " X " +
+            ret += "GLOBAL+ " + repairFidToString(tmp / MAX_ATOM_FEATURE_KIND) + " X " +
                 atomFidToString(tmp % MAX_ATOM_FEATURE_KIND);
         }
     }
@@ -1131,23 +1133,23 @@ std::string FeatureVector::fidToString(unsigned int fid) {
         // this is a var cross feature
         unsigned int tmp = fid - CROSS_FEATURE_BASE;
         if (tmp < MAX_ATOM_FEATURE_KIND * MAX_ATOM_FEATURE_KIND)
-            ret = "VAR " + atomFidToString(tmp / MAX_ATOM_FEATURE_KIND) + " X " +
+            ret += "VAR " + atomFidToString(tmp / MAX_ATOM_FEATURE_KIND) + " X " +
                 atomFidToString(tmp % MAX_ATOM_FEATURE_KIND);
         else if (tmp < 2 * MAX_ATOM_FEATURE_KIND * MAX_ATOM_FEATURE_KIND) {
             tmp -= MAX_ATOM_FEATURE_KIND * MAX_ATOM_FEATURE_KIND;
-            ret = "VAR- " + atomFidToString(tmp / MAX_ATOM_FEATURE_KIND) + " X " +
+            ret += "VAR- " + atomFidToString(tmp / MAX_ATOM_FEATURE_KIND) + " X " +
                 atomFidToString(tmp % MAX_ATOM_FEATURE_KIND);
         }
         else {
             tmp -= 2 * MAX_ATOM_FEATURE_KIND * MAX_ATOM_FEATURE_KIND;
-            ret = "VAR+ " + atomFidToString(tmp / MAX_ATOM_FEATURE_KIND) + " X " +
+            ret += "VAR+ " + atomFidToString(tmp / MAX_ATOM_FEATURE_KIND) + " X " +
                 atomFidToString(tmp % MAX_ATOM_FEATURE_KIND);
         }
     }
     else {
         // this is a value cross feature
         unsigned int tmp = fid - VALUE_FEATURE_BASE;
-        ret = "VALUE " + atomFidToString(tmp / MAX_VALUE_FEATURE_KIND) + " X " +
+        ret += "VALUE " + atomFidToString(tmp / MAX_VALUE_FEATURE_KIND) + " X " +
             valueFidToString(tmp % MAX_VALUE_FEATURE_KIND);
     }
     return ret;
