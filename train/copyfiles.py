@@ -8,7 +8,6 @@ copy_cmd = "cp -i"
 
 for f in files:
     system(copy_cmd + " " + f + " " + dest)
-    print f
 
 system("cp -i inspace-revs/*  ~/Workspace/prophet/crawler/train/inspace-revs")
 system("cp -i  -r raw-src/*  ~/Workspace/prophet/crawler/train/raw-src/")
