@@ -1,0 +1,2 @@
+.
+-I/usr/include -g -O2 -fvisibility=hidden -c -o arrayClear.lo 

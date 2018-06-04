@@ -128,7 +128,11 @@ public:
 
     std::set<clang::Expr*> getGlobalCandidateExprs();
 
+    std::set<clang::FunctionDecl*> getGlobalCandidateFunctions();
+    ASTLocTy  getFirstStmt(clang::CallExpr* callExpr);
+
     std::set<clang::Stmt*> getGlobalCandidateIfStmts();
+    void dump();
 
     std::set<clang::Stmt*> getCandidateMacroExps();
 

@@ -54,7 +54,9 @@ static std::string replaceSlash(const std::string &str) {
 double computeScores(SourceContextManager &M, FeatureParameter *FP,
         FeatureExtractor &EX, RepairCandidate &rc, bool learning, bool random) {
     if (learning) {
+        //RepairAction::ExprMutationKind
         std::set<clang::Expr*> atoms = rc.getCandidateAtoms();
+        //is atoms empty?
         double best = -1e+20;
         for (std::set<clang::Expr*>::iterator it = atoms.begin(); it != atoms.end(); ++it) {
             FeatureVector vec = EX.extractFeature(M, rc, *it);
@@ -123,6 +125,7 @@ int RepairSearchEngine::run(const std::string &out_file, size_t try_at_least,
     size_t partial_schema = 0;
     size_t candidate_cnt = 0;
     size_t partial_candidate_cnt = 0;
+    size_t func_mutation_kind = 0;
     FeatureExtractor EX;
     for (size_t i = 0; i < files.size(); ++i) {
         std::string file = files[i];
@@ -166,7 +169,9 @@ int RepairSearchEngine::run(const std::string &out_file, size_t try_at_least,
                 size_t size = atoms.size();
 
                 candidate_cnt += size;
-                if (size > 1) {
+                if (res[j].kind == RepairCandidate::FunctionMutationKind) {
+                    ++ func_mutation_kind;
+                } else if (size > 1) {
                     partial_candidate_cnt += size;
                     partial_schema += 1;
                 }
@@ -183,6 +188,7 @@ int RepairSearchEngine::run(const std::string &out_file, size_t try_at_least,
     outlog_printf(1, "Total %lu different repair candidate templates for scoring!!!\n", candidate_cnt);
     outlog_printf(1, "Total %lu different concrete repair candidate templates!!!\n", candidate_cnt - partial_candidate_cnt);
     outlog_printf(1, "Total %lu different partial repair candidate templates!!\n", partial_candidate_cnt);
+    outlog_printf(1, "Total %lu function mutation kinds!!\n", func_mutation_kind);
 
     if (print_fix_only) {
         outlog_printf(1, "Print candidate templates...\n");
@@ -257,6 +263,7 @@ int RepairSearchEngine::run(const std::string &out_file, size_t try_at_least,
         fclose(fout);
         return 0;
     }
+        //if !print fix only
     else {
         outlog_printf(1, "Trying different candidates!\n");
         ExprSynthesizer ES(P, M, q, naive, learning, FP);
@@ -281,6 +288,8 @@ int RepairSearchEngine::run(const std::string &out_file, size_t try_at_least,
                 outlog_printf(1, "Total %lu different repair candidate templates for scoring!!!\n", candidate_cnt);
                 outlog_printf(1, "Total %lu different concrete repair candidate templates!!!\n", candidate_cnt - partial_candidate_cnt);
                 outlog_printf(1, "Total %lu different partial repair candidate templates!!\n", partial_candidate_cnt);
+                outlog_printf(1, "Total %lu function mutation kinds!!\n", func_mutation_kind);
+
                 return 1;
             }
             else {
@@ -338,6 +347,8 @@ int RepairSearchEngine::run(const std::string &out_file, size_t try_at_least,
         outlog_printf(1, "Total %lu different repair candidate templates for scoring!!!\n", candidate_cnt);
         outlog_printf(1, "Total %lu different concrete repair candidate templates!!!\n", candidate_cnt - partial_candidate_cnt);
         outlog_printf(1, "Total %lu different partial repair candidate templates!!\n", partial_candidate_cnt);
+        outlog_printf(1, "Total %lu function mutation kinds!!\n", func_mutation_kind);
+
         return 0;
     }
 }

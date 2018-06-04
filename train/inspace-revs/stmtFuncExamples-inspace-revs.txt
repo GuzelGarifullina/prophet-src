@@ -1,0 +1,4 @@
+arrayClear
+clearObject
+Error
+globalError

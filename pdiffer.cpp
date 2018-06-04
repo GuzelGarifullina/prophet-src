@@ -193,11 +193,46 @@ bool sameStmtByString(ASTContext *ast1, Stmt* S1, ASTContext *ast2, Stmt* S2) {
     return tmps1 == tmps2;
 }
 
+static bool matchMoveKindCandidate(const RepairCandidate &rc, ASTDiffer &differ, std::set<clang::Expr*> &insMatchSet) {
+    std::vector<DiffResultEntry> res;
+    differ.GetDiffResultForStmt(res);
+
+    if (rc.kind != RepairCandidate::FunctionMutationKind){
+        return false;
+    }
+    if (!(res[0].NodeKind2 == ASTDiffer::StmtKind && res[1].NodeKind2 == ASTDiffer::StmtKind)){
+        return false;
+    }
+    insMatchSet.clear();
+    insMatchSet.insert(NULL);
+
+    ASTContext *ast1 = differ.getAST1();
+    ASTContext *ast2 = differ.getAST2();
+
+    //Insert first func stmt
+    Stmt *S1 = (Stmt*)rc.actions[0].ast_node;
+    //fprintf(stdout, (stmtToString(*ast1, S1) + "\n").c_str() );
+    Stmt *S2 = res[0].Node2.stmt;
+    //fprintf(stdout, (stmtToString(*ast1, S2) + "\n").c_str() );
+
+    bool isSame = sameStmtByString(ast1, S1, ast2, S2);
+    S2 = res[1].Node1.stmt;
+    //fprintf(stdout, (stmtToString(*ast1, S2) + "\n").c_str() );
+
+    isSame &= sameStmtByString(ast1, S1, ast2, S2);
+    return isSame;
+}
+
+
 static bool matchCandidateWithHumanFix(const RepairCandidate &rc, ASTDiffer &differ, std::set<clang::Expr*> &insMatchSet) {
     std::vector<DiffResultEntry> res;
     differ.GetDiffResultForStmt(res);
-    if (res.size() != 1)
+    if (res.size() != 1){
+        if (res.size() == 2){
+            return  matchMoveKindCandidate(rc,differ, insMatchSet);
+        }
         return false;
+    }
     DiffResultEntry res0 = res[0];
     ASTContext *ast1 = differ.getAST1();
     ASTContext *ast2 = differ.getAST2();
@@ -632,10 +667,23 @@ int main(int argc, char **argv) {
             fprintf(stdout, "No AST difference!\n");
             return 1;
         }
-        if (res.size() > 1) {
-            fprintf(stdout, "Outside repair space!\n");
+        if (res.size() == 2){
+            if (res[0].DiffActionKind == ASTDiffer::DeleteAction ){
+                DiffResultEntry t = res[0];
+                res[0] = res[1];
+                res[1] = t;
+            }
+            if (res[0].DiffActionKind != ASTDiffer::InsertAction
+                  || res[1].DiffActionKind != ASTDiffer::DeleteAction){
+                fprintf(stdout, "Outside repair space!\n");
+                return 1;
+            }
+        }
+        if (res.size() > 2){
+            fprintf(stdout, "More than 2 stmts\n Has %lu changes", res.size());
             return 1;
         }
+
         if (res[0].NodeKind1 != ASTDiffer::StmtKind) {
             fprintf(stdout, "Outside repair space!\n");
             return 1;
@@ -667,8 +715,9 @@ int main(int argc, char **argv) {
             std::set<Expr*> insMatchSet;
             assert( spaces[i].actions.size() > 0);
             bool res = false;
-            if (spaces[i].actions[0].loc.stmt == locStmt)
+            if (spaces[i].actions[0].loc.stmt == locStmt){
                 res = matchCandidateWithHumanFix(spaces[i], differ, insMatchSet);
+            }
             bool found_candidate = false;
             for (std::set<clang::Expr*>::iterator it =insSet.begin(); it != insSet.end(); it ++) {
                 FeatureVector vec;
@@ -678,7 +727,7 @@ int main(int argc, char **argv) {
                 if (res && insMatchSet.count(*it)) {
                     vec.setMark();
                     if (!found_candidate) {
-                        //llvm::outs() << "CandidateType: " << spaces[i].kind << "\n";
+                        llvm::outs() << "CandidateType: " << spaces[i].kind << "\n";
                         llvm::outs() << "Candidate:\n" << spaces[i].toString(M) << "\n";
                     }
                     found = true;

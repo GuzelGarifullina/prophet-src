@@ -649,7 +649,7 @@ std::set<Expr*> LocalAnalyzer::getCandidateInsertExprs() {
     return ret;
 }
 
-std::set<Stmt*> LocalAnalyzer::getCandidateMacroExps() {
+    std::set<Stmt*> LocalAnalyzer::getCandidateMacroExps() {
     std::set<Stmt*> ret;
     const std::set<Stmt*> &stmts = G->getCandidateMacroExps();
     for (std::set<Stmt*>::const_iterator it = stmts.begin(); it != stmts.end(); ++it) {
@@ -666,6 +666,42 @@ std::set<Expr*> LocalAnalyzer::getGlobalCandidateExprs() {
     for (std::set<Expr*>::iterator it = exprs.begin(); it != exprs.end(); ++it)
         res.insert(llvm::dyn_cast<Expr>(duplicateStmt(ctxt, *it)));
     return res;
+}
+
+
+
+std::set<FunctionDecl*> LocalAnalyzer::getGlobalCandidateFunctions() {
+    return G->getFuncDecls();
+}
+std::string getCallExprName(CallExpr* callExpr)
+{
+    if (callExpr != NULL){
+        QualType qualType = callExpr->getType();
+        const Type *pType = qualType.getTypePtrOrNull();
+
+        if(pType != NULL)
+        {
+            FunctionDecl *func = callExpr->getDirectCallee();
+            if (func == NULL){
+                return  "";
+            }
+            DeclarationNameInfo declInfo = func->getNameInfo();
+            return declInfo.getAsString();
+        }
+        return "";
+    }
+}
+ASTLocTy LocalAnalyzer::getFirstStmt(clang::CallExpr* callExpr){
+    std::map<std::string,ASTLocTy>  funcs = G->getFunFistStmts();
+    std::string callExprName = getCallExprName(callExpr);
+    if(callExprName== "" || funcs.find(callExprName) == funcs.end()){
+        return ASTLocTy();
+    }
+    ASTLocTy funcFirstLoc = funcs[callExprName];
+    return funcFirstLoc;
+}
+void LocalAnalyzer::dump() {
+    G->dump(true);
 }
 
 std::set<Stmt*> LocalAnalyzer::getGlobalCandidateIfStmts() {

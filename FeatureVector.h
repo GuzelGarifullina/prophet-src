@@ -20,14 +20,17 @@
 #include <string>
 #include <map>
 #include <set>
+#include <clang/AST/ASTContext.h>
 
 namespace clang {
     class Expr;
     class Stmt;
+    class ASTContext;
 }
 
 class SourceContextManager;
 class RepairCandidate;
+class RepairAction;
 
 class FeatureVector: public std::vector<unsigned int> {
     bool mark;
@@ -100,4 +103,21 @@ public:
 
     FeatureVector extractFeature(SourceContextManager &M,
         const RepairCandidate &rc, clang::Expr* insVar);
+private:
+    void countResVLoc(ValueToFeatureMapTy &resv_loc, std::vector<clang::Stmt*> &loc_stmts,
+                                            clang::ASTContext *ast);
+    void computeModificationFeatures(ValueToFeatureMapTy &resv_loc,
+                                                       std::set<unsigned int> &retVec, FeatureSetTy &res1,
+                                                       const size_t ATOM_V_BASE);
+    void computeSemanticCrossFeatures(ValueToFeatureMapTy &resv_loc,
+                                      std::set<unsigned int> &retVec, ValueToFeatureMapTy &resv,
+                                      const size_t ATOM_V_BASE);
+    void extractFeatureAction(std::set<unsigned int> &retVec,
+                                                  const RepairCandidate &rc,
+                                                  const RepairAction &action,
+                                                  size_t action_id,
+                                                  FeatureSetTy &res1, SourceContextManager &M,
+                                                  clang::Expr* insVar);
+
+
 };

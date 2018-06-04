@@ -296,7 +296,9 @@ ProfileErrorLocalizer::ProfileErrorLocalizer(BenchProgram &P,
         /* Process of profiling. */
         ProfileLocationMapTy res;
         clearProfileResult();
+        //runs test cmd
         bool tmp = P.test("profile", *it, testEnv, true);
+        ///reads ProfileLocationMapTy from /tmp dir
         res = parseProfileResult();
 
         /* Check that test is negative. */

@@ -66,14 +66,14 @@ namespace clang {
 
 class SourceContextManager;
 
+
 struct ASTLocTy {
-    std::string filename;
-    std::string src_file;
-    clang::Stmt* parent_stmt;
-    clang::Stmt* stmt;
+    std::string filename = "";
+    std::string src_file = "";
+    clang::Stmt* parent_stmt = NULL;
+    clang::Stmt* stmt = NULL;
 
     ASTLocTy() { }
-
     ASTLocTy(const std::string &filename, const std::string &src_file,
             clang::Stmt *parent_stmt, clang::Stmt* stmt)
         : filename(filename), src_file(src_file), parent_stmt(parent_stmt),
