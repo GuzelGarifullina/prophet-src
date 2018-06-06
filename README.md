@@ -1,6 +1,6 @@
 Собрать prophet можно так:
 
-     docker pull guzelya/prophet
+    docker pull guzelya/prophet
     docker run -it -u="ubuntu" -w="/home/ubuntu/" guzelya/prophet /bin/bash 
     
 Получите id контейнера и его надо вписать в значение  docker_id
@@ -15,7 +15,9 @@
 
 Чтобы собрать Prophet
 
-     cd ~/Workspace/prophet make clean make CXXFLAGS="-Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable -Wno-return-type"
+     cd ~/Workspace/prophet
+     make clean
+     make CXXFLAGS="-Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable -Wno-return-type"
 
 Чтобы переучить модель 
 
