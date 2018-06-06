@@ -13,6 +13,3 @@ system("cp -i inspace-revs/*  ~/Workspace/prophet/crawler/train/inspace-revs")
 system("cp -i  -r raw-src/*  ~/Workspace/prophet/crawler/train/raw-src/")
 system("cp -i  profile_localization.res ~/Workspace/prophet/build/tests/php-case-ecb9d80/php-ecb9d80-workdir")
 
-
-system("~/Workspace/prophet/crawler/learn.py php")
-
