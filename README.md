@@ -11,7 +11,8 @@
 
 Чтобы обновить исходники 
 
-    cd ~/Workspace/prophet/src git pull origin master
+    cd ~/Workspace/prophet/src
+    git pull origin master
 
 Чтобы собрать Prophet
 
@@ -23,6 +24,10 @@
 
     cd ~/Workspace/prophet/src/train
     python copyfiles.py
+    
+    cd ~/Workspace/prophet/crawler
+    ./learn.py php
+
 
 Чтобы проверить пример php-ecb9d80
 
